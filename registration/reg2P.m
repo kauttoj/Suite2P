@@ -203,7 +203,7 @@ for i = 1:numPlanes
             if p == parts
                 toRead = sum(ops1{i}.Nframes) - 2000 * (parts-1);
             end
-            data = fread(fid{i},  sz*toRead, '*int16');
+            data = fread(fid{i},  sz*toRead, '*uint16');
             fwrite(fidCopy, data, class(data));
         end
         fclose(fidCopy);

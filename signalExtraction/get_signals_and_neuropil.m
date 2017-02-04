@@ -119,7 +119,7 @@ if opt.useSVD == 0
     F = NaN(Nk, sum(ops.Nframes), 'single');
     Fneu = NaN(Nk, sum(ops.Nframes), 'single');
     while 1
-        mov = fread(fid,  LyU*LxU*nimgbatch, '*int16');
+        mov = fread(fid,  LyU*LxU*nimgbatch, '*uint16');
         if isempty(mov)
             break;
         end

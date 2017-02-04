@@ -19,7 +19,7 @@ fid = fopen(ops.RegFile, 'r');
 mov = zeros(numel(ops.yrange), numel(ops.xrange), ops.NavgFramesSVD, 'single');
 
 while 1
-    data = fread(fid,  Ly*Lx*nimgbatch, '*int16');
+    data = fread(fid,  Ly*Lx*nimgbatch, '*uint16');
     if isempty(data)
         break;
     end
@@ -110,7 +110,7 @@ if nargin==1 || ~strcmp(clustModel, 'CNMF')
     ix = 0;
     Fs = zeros(ops.nSVDforROI, sum(ops.Nframes), 'single');
     while 1
-        data = fread(fid,  Ly*Lx*nimgbatch, '*int16');
+        data = fread(fid,  Ly*Lx*nimgbatch, '*uint16');
         if isempty(data)
             break;
         end

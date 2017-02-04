@@ -37,7 +37,7 @@ end
 mimg1 = ops.mimg1(ops.yrange, ops.xrange);
 % find indices of good clusters 
 while 1
-    data = fread(fid,  Ly*Lx*nimgbatch, '*int16');
+    data = fread(fid,  Ly*Lx*nimgbatch, '*uint16');
     if isempty(data)
        break; 
     end
@@ -114,7 +114,7 @@ for i = 1:length(ops.Nframes)
 end
 
 if getOr(ops, 'saveNeuropil', 0)
-    S = reshape(S, numel(ops.yrange), numel(ops.xrange), Nbasis);
+    S = reshape(S, numel(ops.yrange), numel(ops.xrange), nBasis);
     save(sprintf('%s/NEU_%s_%s_plane%d.mat', ops.ResultsSavePath, ...
         ops.mouse_name, ops.date, ops.iplane),  'ops', 'S', 'Ntraces', '-v7.3')
 end

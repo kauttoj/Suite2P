@@ -51,6 +51,102 @@ else
     disp('already registered binary found');
 end
 
+if ops.fix_baseline
+    
+    fprintf('\n--- Starting file-wise baseline fix for aligned binary file ---\n')
+    
+    for i = 1:numel(ops1)
+        
+        MAXINT = intmax('uint16');
+        
+        ops         = ops1{i};
+        ops.iplane  = i;
+        [Ly, Lx] = size(ops.mimg);
+        
+        % create tempfile for detrended signals, my effort to read and overwrite original file to save disk space failed
+        % (fseek does not return correct position after fwrite has been used to the previous block)
+        tempfile = [ops.RegFile(1:end-4),'_detrended.bin'];
+        
+        fid_new = fopen(tempfile, 'w+');
+        fid = fopen(ops.RegFile, 'r+');
+        
+        trend_img = zeros(Ly,Lx,length(ops.Nframes),'single');
+        trend_val = zeros(1,length(ops.Nframes));
+        
+        for block = 1:length(ops.Nframes);
+            
+            data = fread(fid,  Ly*Lx*ops.Nframes(block), '*uint16');
+            data = single(reshape(data, Ly, Lx, []));
+            %
+            if nnz(data<0)>0
+                warning('Total %i pixels are negative (binary %s, block %i) !!!',nnz(data<0),ops.RegFile,block);
+            end
+            if nnz(data>MAXINT)>0
+                warning('Total %i pixels are over uint16 limit (binary %s, block %i) !!!',nnz(data>MAXINT),ops.RegFile,block);
+            end
+            %
+            [data,m] = klab_detrend(data,ops.imageRate,ops.detrend_window);
+            %
+            trend_img(:,:,block) = m;
+            trend_val(block) = median(m(:));
+            %
+            if nnz(data>MAXINT)>0
+                warning('Total %i pixels are over uint16 limit after detrending (binary %s, block %i) !!!',nnz(data>MAXINT),ops.RegFile,block);
+            end
+            
+            count = fwrite(fid_new,uint16(data),'*uint16');
+            if count ~= Ly*Lx*ops.Nframes(block)
+                error('Number of written elements mismatch! (BUG)');
+            end
+            
+        end
+        
+        shift_levels = sum(trend_val.*ops.Nframes/sum(ops.Nframes)) - trend_val;
+        
+        fprintf('\nLevel fixes are: ');
+        for k=1:length(shift_levels)
+            fprintf('%3.1f (%i) ',shift_levels(k),k);
+        end
+        ind = find(max(abs(shift_levels))==abs(shift_levels));
+        fprintf('\nMaximum shift was %4.1f for file nr. %i\n\n',shift_levels(ind),ind);
+        
+        frewind(fid);
+        frewind(fid_new);
+        
+        for block = 1:length(ops.Nframes);
+            data = single(fread(fid_new,Ly*Lx*ops.Nframes(block), '*uint16'));
+            data = single(reshape(data, Ly, Lx, []));
+            
+            data = data + shift_levels(block);
+            data = max(data,0);
+            if nnz(data>MAXINT)>0
+                warning('Total %i pixels are over uint16 limit after level fix (binary %s, block %i) !!!',nnz(data>MAXINT),ops.RegFile,block);
+            end
+            data = min(data,single(MAXINT));
+            
+            count = fwrite(fid,uint16(data),'*uint16');
+            
+            if count ~= Ly*Lx*ops.Nframes(block)
+                error('Number of written elements mismatch! (BUG)');
+            end
+            
+        end
+        
+        fclose(fid);
+        fclose(fid_new);
+        
+        delete(tempfile);
+        
+        ops.shift_levels = shift_levels;
+        ops.trend_val = trend_val;
+        
+        ops1{i} = ops;
+        
+        fprintf('\n--- signal level fixing finished ---\n')
+        
+    end
+end
+
 %%
 for i = 1:numel(ops1)
     ops         = ops1{i};    
@@ -85,12 +181,12 @@ for i = 1:numel(ops1)
             ops.mouse_name, ops.date, ops.iplane),  'ops',  'stat',...
             'Fcell', 'FcellNeu', '-v7.3')
     end
-
     
     if ops.DeleteBin
         fclose('all');
         delete(ops.RegFile);        % delete temporary bin file
     end
+    
 end
 
 % clean up

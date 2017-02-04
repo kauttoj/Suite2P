@@ -178,6 +178,14 @@ end
 h.dat.procmap = 0;
 h.dat.map = 1;
 
+N_cells = 0;
+for i=1:length(h.dat.stat)
+   N_cells = N_cells + double(h.dat.stat(i).iscell);
+end
+h.N_cells = N_cells;
+
+refresh_stats(h,1);
+
 redraw_fluorescence(h);
 redraw_figure(h);
 
@@ -215,14 +223,18 @@ function pushbutton84_Callback(hObject, eventdata, h)
 % save proc file and rules file
 h.dat.F.trace = [];
 dat = h.dat;
+refresh_stats(h,2);
 save([h.dat.filename(1:end-4) '_proc.mat'], 'dat')
+refresh_stats(h,1);
 %
 h.st0(:,1) = double([h.dat.stat.iscell]);
 %
 statLabels  = h.statLabels;
 prior       = h.prior;
 st          = cat(1, h.st, h.st0);
+refresh_stats(h,2);
 save(h.dat.cl.fpath, 'st', 'statLabels', 'prior')
+refresh_stats(h,1);
 
 
 function figure1_ResizeFcn(hObject, eventdata, h)
@@ -369,6 +381,13 @@ if x>=1 && y>=1 && x<=h.dat.cl.Lx && y<=h.dat.cl.Ly && h.dat.res.iclust(y,x)>0
             % flip currently selected unit
             h.dat.stat(ichosen).iscell = 1 - ...
                 h.dat.stat(ichosen).iscell;
+            
+            if h.dat.stat(ichosen).iscell==1
+                h.N_cells = h.N_cells + 1;
+            else
+                h.N_cells = h.N_cells - 1;
+            end
+            refresh_stats(h,1);
         case 'extend'
             h.dat.stat(ichosen).redcell = 1 -  h.dat.stat(ichosen).redcell;
             
@@ -706,3 +725,17 @@ msg{1} = ['Zoom in on portion of the image. Quadrants have 10% overlap.'];
 msg{3} = ['Buttons become dark grey after visiting a quadrant.'];
 
 msgbox(msg, 'ZOOM panel instructions');
+
+function refresh_stats(handles,state)
+    nrois = size(handles.st0,1);
+    ncells = handles.N_cells;
+    switch state        
+        case 1
+            thestr = sprintf('%d Segments\n%d (%i%%) Cells\nReady.',nrois,ncells,round(100*ncells/nrois));        
+            set(handles.datastatsID,'BackGroundcolor','g')
+        case 2
+            thestr = sprintf('%d Segments\n%d (%i%%) Cells\nPROCESSING!',nrois,ncells,round(100*ncells/nrois));        
+            set(handles.datastatsID,'BackGroundcolor','r')
+    end    
+    set(handles.datastatsID,'String',thestr);
+    drawnow();

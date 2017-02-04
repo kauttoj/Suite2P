@@ -25,7 +25,7 @@ fid = fopen(ops.RegFile, 'r');
 tic
 F = zeros(Nk, sum(ops.Nframes), 'single');
 while 1
-    data = fread(fid,  Ly*Lx*nimgbatch, '*int16');
+    data = fread(fid,  Ly*Lx*nimgbatch, '*uint16');
     if isempty(data)
        break; 
     end
