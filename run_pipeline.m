@@ -53,26 +53,24 @@ end
 
 if ops.fix_baseline
     
-    fprintf('\n--- Starting file-wise baseline fix for aligned binary file ---\n')
+    fprintf('\n--- Starting file-wise baseline fix ---\n')
     
     for i = 1:numel(ops1)
-        
-        MAXINT = intmax('uint16');
         
         ops         = ops1{i};
         ops.iplane  = i;
         [Ly, Lx] = size(ops.mimg);
         
-        % create tempfile for detrended signals, my effort to read and overwrite original file to save disk space failed
-        % (fseek does not return correct position after fwrite has been used to the previous block)
-        tempfile = [ops.RegFile(1:end-4),'_detrended.bin'];
-        
-        fid_new = fopen(tempfile, 'w+');
         fid = fopen(ops.RegFile, 'r+');
         
-        trend_img = zeros(Ly,Lx,length(ops.Nframes),'single');
-        trend_val = zeros(1,length(ops.Nframes));
+        mean_images = zeros(Ly,Lx,length(ops.Nframes),'single');
+        count_images = zeros(Ly,Lx,length(ops.Nframes),'single');
         
+        MAXINT = single(intmax('uint16'));
+        
+        fprintf('plane %i with %i blocks and %i frames\n',i,length(ops.Nframes),sum(ops.Nframes));
+        
+        fprintf(' computing mean...\n');
         for block = 1:length(ops.Nframes);
             
             data = fread(fid,  Ly*Lx*ops.Nframes(block), '*uint16');
@@ -85,45 +83,60 @@ if ops.fix_baseline
                 warning('Total %i pixels are over uint16 limit (binary %s, block %i) !!!',nnz(data>MAXINT),ops.RegFile,block);
             end
             %
-            [data,m] = klab_detrend(data,ops.imageRate,ops.detrend_window);
-            %
-            trend_img(:,:,block) = m;
-            trend_val(block) = median(m(:));
-            %
-            if nnz(data>MAXINT)>0
-                warning('Total %i pixels are over uint16 limit after detrending (binary %s, block %i) !!!',nnz(data>MAXINT),ops.RegFile,block);
-            end
-            
-            count = fwrite(fid_new,uint16(data),'*uint16');
-            if count ~= Ly*Lx*ops.Nframes(block)
-                error('Number of written elements mismatch! (BUG)');
-            end
-            
+            nans = isnan(data);
+            data(nans) = 0;
+            % Count up non-NaNs.
+            n = sum(~nans,3);
+            clear nans;
+            n(n==0) = NaN; % prevent divideByZero warnings
+            % Sum up non-NaNs, and divide by the number of non-NaNs.
+            m = sum(data,3)./n;
+            count_images(:,:,block)  = n;
+            mean_images(:,:,block) = m;
+                       
         end
-        
-        shift_levels = sum(trend_val.*ops.Nframes/sum(ops.Nframes)) - trend_val;
-        
-        fprintf('\nLevel fixes are: ');
-        for k=1:length(shift_levels)
-            fprintf('%3.1f (%i) ',shift_levels(k),k);
-        end
-        ind = find(max(abs(shift_levels))==abs(shift_levels));
-        fprintf('\nMaximum shift was %4.1f for file nr. %i\n\n',shift_levels(ind),ind);
-        
-        frewind(fid);
-        frewind(fid_new);
-        
+        clear data nans;
+                
+        background = 0;
+        coef = sum(count_images,3);
         for block = 1:length(ops.Nframes);
-            data = single(fread(fid_new,Ly*Lx*ops.Nframes(block), '*uint16'));
+            background = background + mean_images(:,:,block).*count_images(:,:,block)./coef;
+        end
+        clear count_images;
+        
+        if nnz(isnan(background))>0
+           warning('Background has %i NaN''s !!!!',nnz(isnan(background)));
+        end
+        
+        tempfile = [ops.RegFile(1:end-4),'_TEMP.bin'];
+        %fid_new = fopen(tempfile, 'w');
+        frewind(fid);        
+        
+        fprintf(' rescaling with common mean...\n');
+        median_multip = nan(1,length(ops.Nframes));
+        for block = 1:length(ops.Nframes)
+            
+            pos = ftell(fid);
+            data = fread(fid,  Ly*Lx*ops.Nframes(block), '*uint16');
             data = single(reshape(data, Ly, Lx, []));
             
-            data = data + shift_levels(block);
+            multimat = background./mean_images(:,:,block);
+            data = bsxfun(@times,data,multimat);
+            median_multip(block) = median(multimat(:));
+
+            if ops.fix_baseline==2
+                fprintf('...running mean detrend removal (block %i)\n',block);
+                data = klab_detrend(data,ops.imageRate,ops.detrend_window,'MEAN');
+            end
+            %data = data + shift_levels(block);
+            
             data = max(data,0);
             if nnz(data>MAXINT)>0
                 warning('Total %i pixels are over uint16 limit after level fix (binary %s, block %i) !!!',nnz(data>MAXINT),ops.RegFile,block);
             end
-            data = min(data,single(MAXINT));
-            
+                        
+            %count = fwrite(fid_new,uint16(data),'*uint16');
+            fseek(fid,pos,'bof');
             count = fwrite(fid,uint16(data),'*uint16');
             
             if count ~= Ly*Lx*ops.Nframes(block)
@@ -131,20 +144,116 @@ if ops.fix_baseline
             end
             
         end
+        clear data;
         
-        fclose(fid);
-        fclose(fid_new);
+        fprintf('level-fix multipliers (medians) for plane %i:\n',ops.iplane);
+        for block = 1:length(ops.Nframes)
+            fprintf(' %3.2f (file %i with %i frames)\n',median_multip(block),block,ops.Nframes(block));
+        end
+        fprintf('\n');
         
-        delete(tempfile);
+        fclose(fid);     
+        %fclose(fid_new);    
+        %delete(ops.RegFile);
+        %movefile(tempfile,ops.RegFile);
         
-        ops.shift_levels = shift_levels;
-        ops.trend_val = trend_val;
+%         ops         = ops1{i};
+%         ops.iplane  = i;
+%         [Ly, Lx] = size(ops.mimg);
+%         
+%         % create tempfile for detrended signals, my effort to read and overwrite original file to save disk space failed
+%         % (fseek does not return correct position after fwrite has been used to the previous block)
+%         tempfile = [ops.RegFile(1:end-4),'_detrended.bin'];
+%                
+%         fid = fopen(ops.RegFile, 'r');
+%         fid_new = fopen(tempfile, 'w+');
+%         
+%         trend_img = zeros(Ly,Lx,length(ops.Nframes),'single');
+%         trend_val = zeros(1,length(ops.Nframes));
+%         MAXINT = intmax('uint16');
+%         
+%         for block = 1:length(ops.Nframes);
+%             
+%             data = fread(fid,  Ly*Lx*ops.Nframes(block), '*uint16');
+%             data = single(reshape(data, Ly, Lx, []));
+%             %
+%             if nnz(data<0)>0
+%                 warning('Total %i pixels are negative (binary %s, block %i) !!!',nnz(data<0),ops.RegFile,block);
+%             end
+%             if nnz(data>MAXINT)>0
+%                 warning('Total %i pixels are over uint16 limit (binary %s, block %i) !!!',nnz(data>MAXINT),ops.RegFile,block);
+%             end
+%             %
+%             m = mean(data,3);
+%             trend_img(:,:,block) = m;                    
+%             
+%             data = bsxfun(@times,data,1./m);
+%             %[data,m] = klab_detrend(data,ops.imageRate,ops.detrend_window);
+%             %
+%             trend_img(:,:,block) = m;
+%             trend_val(block) = median(m(:));
+%             
+%             count = fwrite(fid_new,data,'single');
+%             if count ~= Ly*Lx*ops.Nframes(block)
+%                 error('Number of written elements mismatch! (BUG)');
+%             end
+%             
+%         end
+%         
+%         shift_levels = sum(trend_val.*ops.Nframes/sum(ops.Nframes)) - trend_val;
+%         
+%         background = nanmean(trend_img,3);
+%         
+%         fprintf('\nLevel fixes are: ');
+%         for k=1:length(shift_levels)
+%             fprintf('%3.1f (%i) ',shift_levels(k),k);
+%         end
+%         ind = find(max(abs(shift_levels))==abs(shift_levels));
+%         fprintf('\nMaximum shift was %4.1f for file nr. %i\n\n',shift_levels(ind),ind);
+%         
+%         fclose(fid);
+%         fid = fopen(ops.RegFile, 'w');
+%         
+%         frewind(fid_new);
+%         
+%         for block = 1:length(ops.Nframes)
+%             data = fread(fid_new,Ly*Lx*ops.Nframes(block), 'single');
+%             data = reshape(data, Ly, Lx, []);
+%             
+%             data = bsxfun(@times,data,background);
+%             %data = data + shift_levels(block);
+%             
+%             data = max(data,0);
+%             if nnz(data>MAXINT)>0
+%                 warning('Total %i pixels are over uint16 limit after level fix (binary %s, block %i) !!!',nnz(data>MAXINT),ops.RegFile,block);
+%             end
+%             data = min(data,single(MAXINT));
+%             
+%             count = fwrite(fid,uint16(data),'*uint16');
+%             
+%             if count ~= Ly*Lx*ops.Nframes(block)
+%                 error('Number of written elements mismatch! (BUG)');
+%             end
+%             
+%         end
+%         
+%         fclose(fid);
+%         fclose(fid_new);
+        
+        %delete(tempfile);
+        
+%         ops.shift_levels = shift_levels;
+%         ops.trend_img = trend_img;
+
+        ops.background = background;
+        ops.mean_images = mean_images;
+        
+        clear mean_images;
         
         ops1{i} = ops;
-        
-        fprintf('\n--- signal level fixing finished ---\n')
-        
+                        
     end
+    fprintf('--- signal level fixing finished ---\n\n')
 end
 
 %%

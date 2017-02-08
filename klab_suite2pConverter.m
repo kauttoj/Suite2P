@@ -130,10 +130,9 @@ parfor ii = INDICES
         end
     end
     
-    bad = data>65535;
+    bad = data>floor(intmax('uint16')*0.95);
     if nnz(bad)>0
-       data(bad) = 65535;
-       warning('!!! Total %i pixels were over uint16 upper limit, data is clipped !!! ',nnz(bad));
+       warning('!!! Total %i pixels were close (95%%) to uint16 maximum, data might be clipped !!! ',nnz(bad));
     end
     bad=[];
     
@@ -199,6 +198,8 @@ parfor ii = INDICES
                 fprintf('saving TIFF data (channel %i, part %i)...',channel,i);
                 savedata([file_subfolder{channel},filesep,fname_part,'.tiff'],squeeze(data(channel,:,:,inds)));
                 fprintf(' done\n');
+            else
+                fprintf('TIFF data (channel %i, part %i) already exists! Skipping save\n',channel,i);
             end
         end
         

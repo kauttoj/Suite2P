@@ -11,6 +11,8 @@ if nargin && ischar(varargin{1})
     gui_State.gui_Callback = str2func(varargin{1});
 end
 
+warning('on','all');
+
 if nargout
     [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
 else
@@ -35,6 +37,7 @@ set(gca, 'xcolor', 'w', 'ycolor', 'w')
 
 h.output = hObject;
 guidata(hObject, h);
+set(gcf, 'units','normalized','outerposition',[0.01 0.05 0.98 0.93]);
 % UIWAIT makes new_main wait for user response (see UIRESUME)
 % uiwait(h.figure1);
 
@@ -47,6 +50,7 @@ varargout{1} = h.output;
 function pushbutton17_Callback(hObject, eventdata, h)
 % [filename1,filepath1]=uigetfile('\\zserver\Lab\Share\Marius\', 'Select Data File');
 
+
 flag = 0;
 try
     if isfield(h, 'dat') && isfield(h.dat, 'filename')
@@ -58,6 +62,7 @@ try
     set(h.figure1, 'Name', filename1);
     
     % construct dat. Everything is loaded except F and Fneu.
+    refresh_stats(h,2);
     h.dat = load(fullfile(filepath1, filename1));
     
     flag = 1;
@@ -184,12 +189,12 @@ for i=1:length(h.dat.stat)
 end
 h.N_cells = N_cells;
 
-refresh_stats(h,1);
-
 redraw_fluorescence(h);
 redraw_figure(h);
 
 guidata(hObject,h)
+
+refresh_stats(h,1);
 end
 
 function pushbutton2_Callback(hObject, eventdata, h)
@@ -224,7 +229,11 @@ function pushbutton84_Callback(hObject, eventdata, h)
 h.dat.F.trace = [];
 dat = h.dat;
 refresh_stats(h,2);
-save([h.dat.filename(1:end-4) '_proc.mat'], 'dat')
+try
+    save([h.dat.filename(1:end-4) '_proc.mat'], 'dat')
+catch err
+    warning('Failed to write file %s: %s',[h.dat.filename(1:end-4) '_proc.mat'],err.message);
+end
 refresh_stats(h,1);
 %
 h.st0(:,1) = double([h.dat.stat.iscell]);
@@ -233,7 +242,11 @@ statLabels  = h.statLabels;
 prior       = h.prior;
 st          = cat(1, h.st, h.st0);
 refresh_stats(h,2);
-save(h.dat.cl.fpath, 'st', 'statLabels', 'prior')
+try
+    save(h.dat.cl.fpath, 'st', 'statLabels', 'prior')
+catch err
+    warning('Failed to write file %s: %s',h.dat.cl.fpath,err.message);
+end 
 refresh_stats(h,1);
 
 
@@ -727,15 +740,20 @@ msg{3} = ['Buttons become dark grey after visiting a quadrant.'];
 msgbox(msg, 'ZOOM panel instructions');
 
 function refresh_stats(handles,state)
+
+nrois= nan;
+ncells = nan;
+if isfield(handles,'st0')
     nrois = size(handles.st0,1);
     ncells = handles.N_cells;
-    switch state        
-        case 1
-            thestr = sprintf('%d Segments\n%d (%i%%) Cells\nReady.',nrois,ncells,round(100*ncells/nrois));        
-            set(handles.datastatsID,'BackGroundcolor','g')
-        case 2
-            thestr = sprintf('%d Segments\n%d (%i%%) Cells\nPROCESSING!',nrois,ncells,round(100*ncells/nrois));        
-            set(handles.datastatsID,'BackGroundcolor','r')
-    end    
-    set(handles.datastatsID,'String',thestr);
-    drawnow();
+end
+switch state
+    case 1
+        thestr = sprintf('%d Segments\n%d (%i%%) Cells\nReady.',nrois,ncells,round(100*ncells/nrois));
+        set(handles.datastatsID,'BackGroundcolor','g')
+    case 2
+        thestr = sprintf('%d Segments\n%d (%i%%) Cells\nPROCESSING!',nrois,ncells,round(100*ncells/nrois));
+        set(handles.datastatsID,'BackGroundcolor','r')
+end
+set(handles.datastatsID,'String',thestr);
+drawnow();

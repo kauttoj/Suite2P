@@ -39,7 +39,11 @@ cfg.framerate = 5.1;   % For each pixel. Approximate, for initialization of deco
 cfg.tempdata_folder = [];%;tempdir;
 cfg.delete_raw_tiffs = 1;
 cfg.write_aligned_tiffs = 0;
+<<<<<<< HEAD
+cfg.write_diagnostic_videos = 0;
+=======
 cfg.write_diagnostic_videos = 0; % not yet working
+>>>>>>> 3c0f98bce1b8b4848f1e1cc9097766a6379956cd
 cfg.use_GPU = 0; %
 cfg.fix_baseline = 1; % do piecewise linear detrending of aligned data and fix baselines between files (slow, can take ~2 hours)
 

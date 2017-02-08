@@ -96,7 +96,7 @@ ops0.sensorTau              = 0.5; % decay half-life (or timescale). Approximate
 ops0.maxNeurop              = Inf; % for the neuropil contamination to be less than this (sometimes good, i.e. for interneurons)
 ops0.recomputeKernel        = 1; % whether to re-estimate kernel during optimization (default kernel is "reasonable", if you give good timescales)
 ops0.sameKernel             = 1; % whether the same kernel should be estimated for all neurons (robust, only set to 0 if SNR is high and recordings are long)
-ops0.detrend_window = 50;   % in secods, 50s = 1/50 = 0.02Hz
+ops0.detrend_window = 100;   % in secods, 50s = 1/50 = 0.02Hz
 
 % red channel options
 % redratio = red pixels inside / red pixels outside
@@ -216,6 +216,22 @@ diary off;
 % st are the deconvolved spike times (in frames)
 % c  are the deconvolved amplitudes
 % kernel is the estimated kernel
+
+%     stat(icell).c                      = dcell{icell}.c;     % spike amplitudes
+%     stat(icell).st                     = dcell{icell}.st; % spike times    
+%     stat(icell).neuropilCoefficient    = coefNeu(icell); 
+%     stat(icell).noiseLevel             = sn(icell);     % noise level
+%     stat(icell).kernel                 = dcell{icell}.kernel;     % noise level
+
+% f = trace
+% s = spike
+% b = baseline
+% p = neuropil
+% beta = neuropil contamination coefficient
+% 
+% model:
+% f = conv(s,kernel) + beta*p + b
+% i.e., 
 
 end
 
