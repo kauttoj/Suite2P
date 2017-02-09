@@ -91,7 +91,7 @@ sd = std(dF, [], 2);
 
 sk(:, 1) = skewness(dF, [], 2);
 sk(:, 2) = sd/mean(sd); 
-sk(:, 3) = (max(dF, [], 2)-median(dF, 2))./sd;
+sk(:, 3) = (max(dF, [], 2)-median(dF, 2))./sd; % maxMinusMed
 sk(:, 4) = (prctile(dF, 95, 2)-median(dF, 2))./sd;
 
 for j = 1:numel(stat)

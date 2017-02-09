@@ -13,9 +13,6 @@ startFrame = 1:nFramesPerBatch:nFrames;
 endFrame = min(startFrame+nFramesPerBatch-1, nFrames);
 dreg = zeros(size(data), orig_class);
 
-globalmin = max(min(data(:))*0.95,0);
-globalmax = max(data(:))*1.05;
-
 for iBatch = 1:nBatches
     idx = startFrame(iBatch):endFrame(iBatch);
     if ops.useGPU
@@ -57,17 +54,11 @@ for iBatch = 1:nBatches
             dregBatch(:,:,i) = real(ifft2(fdata .* exp(1i * dph)));
         end
     end
-    
-    % limit values into sane ones (sanity check)
-    ind = dregBatch < globalmin;
-    dregBatch(ind) =  globalmin;
-    
-    ind = dregBatch > globalmax;
-    dregBatch(ind) = globalmax;
-    
+        
     if ops.useGPU
         dregBatch = gather_try(dregBatch);
     end
+        
     dreg(:,:,idx) = dregBatch;    
     
 end
