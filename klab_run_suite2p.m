@@ -17,6 +17,7 @@ if ~exist(cfg.outpath,'dir')
 end
 
 diary off
+pause(0.5);
 if exist(diaryfile,'file')
     try
         delete(diaryfile);
@@ -34,13 +35,42 @@ end
 
 starttime = tic;
 
-fprintf('\n-------- Starting data TIFF converter (%s) ----------\n\n',char(datetime('now')) );
-
-cfg = klab_suite2pConverter(cfg);
-
-%%------------------------------------
 fprintf('\n-------- Starting Suite2P pipeline (%s) ----------\n\n',char(datetime('now')));
 
+if ~isfield(cfg,'num_cores')
+    cfg.num_cores=[];
+end
+    
+klab_createpool(cfg.num_cores);
+
+if exist([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat'],'file')
+    
+    fprintf('!! Old CFG file found, trying to use that...\n');
+    old_cfg = load([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat']);
+    
+    try 
+        for i=1:length(old_cfg.cfg.sbxfiles)
+            if ~strcmp(old_cfg.cfg.sbxfiles{i},cfg.sbxfiles{i})
+               assert(0);
+            end
+        end
+        cfg.mouse_name=old_cfg.cfg.mouse_name;
+        cfg.date=old_cfg.cfg.date;
+        cfg.expts=old_cfg.cfg.expts;
+        cfg.expred=old_cfg.cfg.expred;
+        cfg.fileinfo=old_cfg.cfg.fileinfo;
+        fprintf(' success!! Skipping SBX conversion...\n');
+    catch
+       fprintf(' FAILED. Running full SBX conversion again.\n');
+       cfg = klab_suite2pConverter(cfg); 
+    end
+else
+    cfg = klab_suite2pConverter(cfg);
+end
+
+save([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat'],'cfg');
+
+%%------------------------------------
 db(1).mouse_name    = cfg.mouse_name;
 db(1).date          = cfg.date;
 db(1).expts         = cfg.expts;
@@ -92,7 +122,7 @@ ops0.saveNeuropil           = 1;
 
 % spike deconvolution options
 ops0.imageRate              = cfg.framerate;   % imaging rate (cumulative over planes!). Approximate, for initialization of deconvolution kernel.
-ops0.sensorTau              = 0.5; % decay half-life (or timescale). Approximate, for initialization of deconvolution kernel.
+ops0.sensorTau              = 0.4; % decay half-life (or timescale). Approximate, for initialization of deconvolution kernel.
 ops0.maxNeurop              = Inf; % for the neuropil contamination to be less than this (sometimes good, i.e. for interneurons)
 ops0.recomputeKernel        = 1; % whether to re-estimate kernel during optimization (default kernel is "reasonable", if you give good timescales)
 ops0.sameKernel             = 1; % whether the same kernel should be estimated for all neurons (robust, only set to 0 if SNR is high and recordings are long)

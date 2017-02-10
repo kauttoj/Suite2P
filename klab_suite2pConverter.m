@@ -1,4 +1,5 @@
 function cfg = klab_suite2pConverter(cfg)
+% Converter SBX to TIFF
 
 if ischar(cfg)
     load(cfg);
@@ -17,7 +18,7 @@ if isempty(cfg.tempdata_folder)
 end
 
 if cfg.channels>2
-    error('No more than 2 channels (Green and Red) currently supported (by klab stuff) !!')
+    error('This converter does not currently support more than 2 channels (1=Green and 2=Red) !!')
 end   
 
 for i=1:length(cfg.sbxfiles)
@@ -39,7 +40,7 @@ end
 
 function cfg = klab_sbx2tiff(cfg,INDEX,CONFIGFILE)
 
-N_max_frames = 2000; % split TIFF's (should never reach 4GB)
+N_max_frames = 2000; % split TIFF's (single TIFF should never reach 4GB limit!)
 
 HOME = pwd;
 
@@ -68,6 +69,8 @@ expts_all = cell(1,N_files);
 expred_all = cell(1,N_files);
 fileinfo = cell(1,N_files);
 all_channels = zeros(1,N_files);
+
+
 
 parfor ii = INDICES
     % make sure we are in data folder (required by sbx)

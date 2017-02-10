@@ -64,6 +64,7 @@ if ops.fix_baseline
         fid = fopen(ops.RegFile, 'r+');
         
         mean_images = zeros(Ly,Lx,length(ops.Nframes),'single');
+        corr_images = zeros(Ly,Lx,length(ops.Nframes),'single');
         count_images = zeros(Ly,Lx,length(ops.Nframes),'single');
         
         MAXINT = single(intmax('uint16'));
@@ -87,30 +88,33 @@ if ops.fix_baseline
             data(nans) = 0;
             % Count up non-NaNs.
             n = sum(~nans,3);
-            clear nans;
+            nans = [];
             n(n==0) = NaN; % prevent divideByZero warnings
             % Sum up non-NaNs, and divide by the number of non-NaNs.
             m = sum(data,3)./n;
             count_images(:,:,block)  = n;
-            mean_images(:,:,block) = m;
-                       
+            mean_images(:,:,block) = m;            
+            corr_images(:,:,block) = correlation_image(data,12,Ly,Lx);                       
         end
-        clear data nans;
+        data=[];
                 
         background = 0;
+        corrmap = 0;
         coef = sum(count_images,3);
         for block = 1:length(ops.Nframes);
             background = background + mean_images(:,:,block).*count_images(:,:,block)./coef;
+            corrmap = corrmap + corr_images(:,:,block).*count_images(:,:,block)./coef;
         end
-        clear count_images;
+        count_images=[];
+        corr_images=[];
         
         if nnz(isnan(background))>0
            warning('Background has %i NaN''s !!!!',nnz(isnan(background)));
         end
         
-        tempfile = [ops.RegFile(1:end-4),'_TEMP.bin'];
+       % tempfile = [ops.RegFile(1:end-4),'_TEMP.bin'];
         %fid_new = fopen(tempfile, 'w');
-        frewind(fid);        
+        frewind(fid);
         
         fprintf(' rescaling with common mean...\n');
         median_multip = nan(1,length(ops.Nframes));
@@ -144,7 +148,8 @@ if ops.fix_baseline
             end
             
         end
-        clear data;
+        data=[];
+        mean_images=[];
         
         fprintf('level-fix multipliers (medians) for plane %i:\n',ops.iplane);
         for block = 1:length(ops.Nframes)
@@ -157,6 +162,11 @@ if ops.fix_baseline
         %delete(ops.RegFile);
         %movefile(tempfile,ops.RegFile);
         
+        ops.common_mean = background;
+        ops.common_corrmap = corrmap;        
+        
+        ops1{i} = ops;
+                
 %         ops         = ops1{i};
 %         ops.iplane  = i;
 %         [Ly, Lx] = size(ops.mimg);
@@ -245,12 +255,6 @@ if ops.fix_baseline
 %         ops.shift_levels = shift_levels;
 %         ops.trend_img = trend_img;
 
-        ops.background = background;
-        ops.mean_images = mean_images;
-        
-        clear mean_images;
-        
-        ops1{i} = ops;
                         
     end
     fprintf('--- signal level fixing finished ---\n\n')

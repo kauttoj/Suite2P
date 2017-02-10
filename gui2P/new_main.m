@@ -179,6 +179,10 @@ if isfield(ops, 'Vcorr') && ~isempty(ops.Vcorr)
     h.dat.mimg(:,:,h.dat.maxmap) = ops.Vcorr;
     h.dat.mimg_proc(:,:,h.dat.maxmap) = normalize_image(h.dat.mimg(:,:,h.dat.maxmap));
 end
+if isfield(ops, 'common_corrmap') && ~isempty(ops.common_corrmap)
+    h.dat.mimg(:,:,h.dat.maxmap) = ops.common_corrmap(ops.yrange,ops.xrange);
+    h.dat.mimg_proc(:,:,h.dat.maxmap) = normalize_image(h.dat.mimg(:,:,h.dat.maxmap));
+end
 
 h.dat.procmap = 0;
 h.dat.map = 1;
@@ -429,7 +433,7 @@ if x>=1 && y>=1 && x<=h.dat.cl.Lx && y<=h.dat.cl.Ly && h.dat.res.iclust(y,x)>0
     
     redraw_figure(h);
     guidata(hObject,h);
-    
+       
     str = [];
     labels = [h.statLabels(2:end), {'iscell'}, {'redcell'}];
     for j =1:length(labels)
