@@ -45,7 +45,7 @@ klab_createpool(cfg.num_cores);
 
 if exist([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat'],'file')
     
-    fprintf('!! Old CFG file found, trying to use that...\n');
+    fprintf('!! Old CFG file found, trying to use that...');
     old_cfg = load([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat']);
     
     try 
@@ -59,7 +59,8 @@ if exist([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat'],'file
         cfg.expts=old_cfg.cfg.expts;
         cfg.expred=old_cfg.cfg.expred;
         cfg.fileinfo=old_cfg.cfg.fileinfo;
-        fprintf(' success!! Skipping SBX conversion...\n');
+        cfg.tempdata_folder=old_cfg.cfg.tempdata_folder;
+        fprintf(' success!! Skipping SBX conversion...\n\n');
     catch
        fprintf(' FAILED. Running full SBX conversion again.\n');
        cfg = klab_suite2pConverter(cfg); 
@@ -118,7 +119,7 @@ ops0.ShowCellMap            = 0; % during optimization, show a figure of the clu
 ops0.sig                    = 0.5;  % spatial smoothing length in pixels; encourages localized clusters
 ops0.nSVDforROI             = 1300; % was 1000, how many SVD components for cell clustering
 ops0.NavgFramesSVD          = 6000; % was 5000, how many (binned) timepoints to do the SVD based on
-ops0.saveNeuropil           = 1;
+ops0.saveNeuropil           = 0;
 
 % spike deconvolution options
 ops0.imageRate              = cfg.framerate;   % imaging rate (cumulative over planes!). Approximate, for initialization of deconvolution kernel.

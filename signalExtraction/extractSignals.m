@@ -1,4 +1,4 @@
-function [ops, stat, Fcell, FcellNeu]      = extractSignals(ops, m, stat)
+function [ops, stat, Fcell, FcellNeu,baselines,scalefactors]      = extractSignals(ops, m, stat)
 
 ops.saveNeuropil = getOr(ops, 'saveNeuropil', 0);
 
@@ -26,15 +26,16 @@ fid = fopen(ops.RegFile, 'r');
 
 tic
 F        = zeros(Nk, sum(ops.Nframes), 'single');
+Fraw        = zeros(Nk, sum(ops.Nframes), 'single');
 Fneu    = zeros(Nk, sum(ops.Nframes), 'single');
 if ops.saveNeuropil
     Ntraces = zeros(nBasis, sum(ops.Nframes), 'single');
 end
 % S    = bsxfun(@times, S, maskNeu(:));
+mimg1 = ops.mimg1(ops.yrange, ops.xrange);
 
 [Ly Lx] = size(ops.mimg1);
 
-mimg1 = ops.mimg1(ops.yrange, ops.xrange);
 % find indices of good clusters 
 while 1
     data = fread(fid,  Ly*Lx*nimgbatch, '*uint16');
@@ -43,15 +44,30 @@ while 1
     end
     data = reshape(data, Ly, Lx, []);
     data = data(ops.yrange, ops.xrange, :);
+    sz = size(data);
     data = single(data);
     NT   = size(data,3);
-    
+        
     % process the data
+    
+    Ftemp = zeros(Nk, NT, 'single');
+    data = reshape(data, [], NT);
+    for k = 1:Nk
+       ipix = stat(k).ipix(:)'; 
+       w = stat(k).lam(:)';
+       w = w/sum(w);
+       if ~isempty(ipix)
+           Ftemp(k,:) = w*data(ipix,:);
+       end
+    end
+    Fraw(:,ix + (1:NT))  = Ftemp;
+    data = reshape(data,sz(1),sz(2),NT);
+    
     data = bsxfun(@minus, data, mimg1);
     data = my_conv2(data, ops.sig, [1 2]);
     data = bsxfun(@rdivide, data, m.sdmov);    
     data = single(reshape(data, [], NT));
-    
+        
     %
     Ftemp = zeros(Nk, NT, 'single');
     for k = 1:Nk
@@ -65,12 +81,12 @@ while 1
     Fdeconv     = covLinv * cat(1, Ftemp, StU);
     
     Fneu(:,ix + (1:NT))     = m.LtS * Fdeconv(1+Nk:end, :); % estimated neuropil
-    F(:,ix + (1:NT))        = Fneu(:,ix + (1:NT)) + Fdeconv(1:Nk, :); % estimated ROI signal
+    F(:,ix + (1:NT))        = Fneu(:,ix + (1:NT)) + Fdeconv(1:Nk, :); % estimated ROI signal        
     
     if ops.saveNeuropil
         Ntraces(:,ix + (1:NT)) = Fdeconv(1+Nk:end, :);
     end
-    
+            
     ix = ix + NT;
     if rem(ix, 3*NT)==0
         fprintf('Frame %d done in time %2.2f \n', ix, toc)
@@ -88,6 +104,11 @@ Fneu(:, ops.badframes)  = Fneu(:, indNoNaN(ix));
 
 dF = F - Fneu;
 sd = std(dF, [], 2);
+
+%%
+baselines = mean(Fraw,2) - mean(F,2);
+scalefactors = std(Fraw,[],2)./std(F,[],2);
+%%
 
 sk(:, 1) = skewness(dF, [], 2);
 sk(:, 2) = sd/mean(sd); 

@@ -36,7 +36,11 @@ set(gca, 'xtick', [], 'ytick', [])
 set(gca, 'xcolor', 'w', 'ycolor', 'w')
 
 h.output = hObject;
+
+h.show_dff = 0;
+
 guidata(hObject, h);
+
 set(gcf, 'units','normalized','outerposition',[0.01 0.05 0.98 0.93]);
 % UIWAIT makes new_main wait for user response (see UIRESUME)
 % uiwait(h.figure1);
@@ -46,10 +50,12 @@ function varargout = new_main_OutputFcn(hObject, eventdata, h)
 % varargout  cell array for returning output args (see VARARGOUT);
 varargout{1} = h.output;
 
+function pushbutton87_KeyPressFcn(hObject, eventdata, h)
+
+
 % main LOAD call
 function pushbutton17_Callback(hObject, eventdata, h)
 % [filename1,filepath1]=uigetfile('\\zserver\Lab\Share\Marius\', 'Select Data File');
-
 
 flag = 0;
 try
@@ -683,12 +689,14 @@ msg{11} = ['hint: you can keep any help box open while interacting with the GUI.
 msgbox(msg, 'Instructions!');
 
 function pushbutton108_Callback(hObject, eventdata, handles)
-msg{1} = ['Timecourse of selected ROI and neuropil fluorescence across experiment.'];
-msg{3} = ['The selected cell has 0 saturation (gray) in ROI image.'];
-msg{5} = ['Traces have been smoothed for display purposes.'];
-msg{7} = ['Statistics shown are same variables as used in "mask color" section.'];
-
-msgbox(msg, 'Fluorescence instructions');
+% msg{1} = ['Timecourse of selected ROI and neuropil fluorescence across experiment.'];
+% msg{3} = ['The selected cell has 0 saturation (gray) in ROI image.'];
+% msg{5} = ['Traces have been smoothed for display purposes.'];
+% msg{7} = ['Statistics shown are same variables as used in "mask color" section.'];
+% msgbox(msg, 'Fluorescence instructions');
+handles.show_dff = 1-(handles.show_dff==1);
+guidata(hObject,handles);
+redraw_fluorescence(handles);
 
 function pushbutton106_Callback(hObject, eventdata, handles)
 msg{1} = ['This applies only if you select "ROIs" under "background".'];
