@@ -55,7 +55,7 @@ if exist([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat'],'file
             end
         end
         for i=1:length(old_cfg.cfg.sbxfiles)
-            if ~exist(old_cfg.cfg.fileinfo{i}.folders,'dir')
+            if ~exist(old_cfg.cfg.fileinfo{i}.folders{1},'dir')
                 assert(0);
             end
         end
@@ -66,9 +66,9 @@ if exist([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat'],'file
         cfg.framerate = old_cfg.cfg.framerate;
         cfg.fileinfo=old_cfg.cfg.fileinfo;
         cfg.tempdata_folder=old_cfg.cfg.tempdata_folder;
-        fprintf(' success!! Skipping SBX conversion...\n\n');
-    catch
-       fprintf(' FAILED. Running full SBX conversion again.\n');
+        fprintf(' success!! Skipping SBX conversion\n\n');
+    catch err
+       fprintf(' FAILED! Running full SBX conversion\n');
        cfg = klab_suite2pConverter(cfg); 
     end
 else

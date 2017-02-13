@@ -52,6 +52,8 @@ if ~isfield(cfg,'framerate') || (isfield(cfg,'framerate') && isempty(cfg.framera
     cfg.framerate = mean(framerate); % use same mean framerate for all files
 end
 
+fprintf('Conversion finished!\n\n');
+
 end
 
 
@@ -156,7 +158,7 @@ parfor ii = INDICES
     end
     bad=[];
     
-    data = int16(data);
+    data = uint16(data);
     
     N_frames = size(data,4);
     
