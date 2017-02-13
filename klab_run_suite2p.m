@@ -54,10 +54,16 @@ if exist([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat'],'file
                assert(0);
             end
         end
+        for i=1:length(old_cfg.cfg.sbxfiles)
+            if ~exist(old_cfg.cfg.fileinfo{i}.folders,'dir')
+                assert(0);
+            end
+        end
         cfg.mouse_name=old_cfg.cfg.mouse_name;
         cfg.date=old_cfg.cfg.date;
         cfg.expts=old_cfg.cfg.expts;
         cfg.expred=old_cfg.cfg.expred;
+        cfg.framerate = old_cfg.cfg.framerate;
         cfg.fileinfo=old_cfg.cfg.fileinfo;
         cfg.tempdata_folder=old_cfg.cfg.tempdata_folder;
         fprintf(' success!! Skipping SBX conversion...\n\n');
@@ -152,6 +158,12 @@ if cfg.do_deconvolution
     add_deconvolution(ops0, db0(1));
 end
 
+try
+   add_clean_signals(ops0, db0(1));
+catch err
+   warning('Failed to add cleaned signals into datastructure: %s',err.message);
+end
+
 % add red channel information (if it exists)
 if isfield(db0,'expred') && ~isempty(db0(1).expred)
     
@@ -217,7 +229,9 @@ if cfg.delete_raw_tiffs==1
         rmdir([cfg.tempdata_folder,filesep,cfg.mouse_name,filesep,cfg.date]);
         rmdir([cfg.tempdata_folder,filesep,cfg.mouse_name]);
         rmdir([cfg.tempdata_folder]);
-    catch
+    catch err
+        warning('Failed to clean folders: %s',err.message);
+    end
 end
 
 try
@@ -227,7 +241,7 @@ catch
     
 end
 
-fprintf('\n-------- All done! (%s, took %imin) ----------\n\n',char(datetime('now')),round(toc(starttime)/60));
+fprintf('\n\n-------- All done! (%s, took %imin) ----------\n\n',char(datetime('now')),round(toc(starttime)/60));
 
 try
     diary(diaryfile);

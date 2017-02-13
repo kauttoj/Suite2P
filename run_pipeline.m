@@ -53,7 +53,7 @@ end
 
 if ops.fix_baseline && processed==0
     
-    fprintf('\n--- Starting file-wise baseline fix ---\n')
+    fprintf('\n--- Starting file-wise baseline fix ---\n\n')
     
     for i = 1:numel(ops1)
         
@@ -118,7 +118,7 @@ if ops.fix_baseline && processed==0
         frewind(fid);
         
         fprintf(' rescaling with common mean...\n');
-        median_multip = nan(1,length(ops.Nframes));
+        median_multip = nan(length(ops.Nframes),3);
         for block = 1:length(ops.Nframes)
             
             pos = ftell(fid);
@@ -127,7 +127,9 @@ if ops.fix_baseline && processed==0
             
             multimat = background./mean_images(:,:,block);
             data = bsxfun(@times,data,multimat);
-            median_multip(block) = median(multimat(:));
+            median_multip(block,1) = median(multimat(:));
+            median_multip(block,2) = prctile(multimat(:),2.5);
+            median_multip(block,3) = prctile(multimat(:),97.5);
 
             if ops.fix_baseline==2
                 fprintf('...running mean detrend removal (block %i)\n',block);
@@ -156,19 +158,17 @@ if ops.fix_baseline && processed==0
         
         ops.mimg1 = mimg1/sum(ops.Nframes);
         
-        fprintf('level-fix multipliers (medians) for plane %i:\n',ops.iplane);
+        fprintf('level-fix multipliers for plane %i:\n',ops.iplane);
         for block = 1:length(ops.Nframes)
-            fprintf(' %3.2f (file %i with %i frames)\n',median_multip(block),block,ops.Nframes(block));
+            fprintf(' median %3.2f, 95%% interval %3.2f - %3.2f (file %i with %i frames)\n',median_multip(block,1),median_multip(block,2),median_multip(block,3),block,ops.Nframes(block));
         end
         fprintf('\n');
         
         fclose(fid);     
-        %fclose(fid_new);    
-        %delete(ops.RegFile);
-        %movefile(tempfile,ops.RegFile);
         
         ops.common_mean = background;
         ops.common_corrmap = corrmap;
+        ops.median_multip = median_multip;
         
         ops1{i} = ops;
                        
@@ -220,17 +220,9 @@ for i = 1:numel(ops1)
 %             end
 %         end        
         
-        for k = 1:length(ops.Nframes)
-            dF = Fcell{k} - FcellNeu{k};
-            F_clean{k} = bsxfun(@times,dF,scalefactors);
-            F_clean{k} = bsxfun(@plus,F_clean{k},baselines);            
-%             F_clean1{k} = bsxfun(@times,dF,scalefactors1');
-%             F_clean1{k} = bsxfun(@plus,F_clean1{k},baselines1');            
-        end
-        
         save(sprintf('%s/F_%s_%s_plane%d.mat', ops.ResultsSavePath, ...
             ops.mouse_name, ops.date, ops.iplane),  'ops',  'stat',...
-            'Fcell', 'FcellNeu','F_clean','scalefactors','baselines','-v7.3');
+            'Fcell', 'FcellNeu','scalefactors','baselines','-v7.3');
     end
     
     if ops.DeleteBin

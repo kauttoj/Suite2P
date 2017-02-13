@@ -35,6 +35,23 @@ for i=1:length(cfg.sbxfiles)
 end
 cfg = klab_sbx2tiff(cfg);
 
+% if not set (overridden), set framerate here
+if ~isfield(cfg,'framerate') || (isfield(cfg,'framerate') && isempty(cfg.framerate))
+    framerate = [];
+    for i=1:length(cfg.fileinfo)
+        framerate(i)=cfg.fileinfo{i}.info.framerate;
+    end
+    
+    if any(abs((framerate-median(framerate))/median(framerate)))>0.10
+        for i=1:length(framerate)
+            fprintf('file %i: %f\n',framerate(i)) ;
+        end
+        error('!!!!! Framerates do not match between files (over 10%% deviations found) !!!!!');
+    end
+    
+    cfg.framerate = mean(framerate); % use same mean framerate for all files
+end
+
 end
 
 
@@ -70,8 +87,6 @@ expred_all = cell(1,N_files);
 fileinfo = cell(1,N_files);
 all_channels = zeros(1,N_files);
 
-
-
 parfor ii = INDICES
     % make sure we are in data folder (required by sbx)
     filename = infiles{ii};
@@ -106,6 +121,7 @@ parfor ii = INDICES
     sbxinfo = info;
     info=[];
     
+    
     if ndims(data)==4
         info.channels = size(data,1);
     else
@@ -120,6 +136,7 @@ parfor ii = INDICES
     end
     
     info.channels = size(data,1);
+    info.framerate = (sbxinfo.resfreq/sbxinfo.config.lines*(2-sbxinfo.scanmode));
     
     % test if the last GREEN frame contains good data, if not, drop it
     last = squeeze(data(1,:,:,end));
@@ -133,9 +150,9 @@ parfor ii = INDICES
         end
     end
     
-    bad = data>floor(intmax('uint16')*0.95);
+    bad = data>floor(intmax('uint16')*0.99);
     if nnz(bad)>0
-       warning('!!! Total %i pixels were close (95%%) to uint16 maximum, data might be clipped !!! ',nnz(bad));
+       warning('!!! Total %i pixels were over 99%% of uint16 maximum, data might be clipped !!! ',nnz(bad));
     end
     bad=[];
     
@@ -268,7 +285,7 @@ sy = length(FOV(3):FOV(4));
 sx = length(FOV(1):FOV(2));
 
 if size(img,2)>sy || size(img,3)>sx
-    fprintf(' -- note: original FOV [y,x]=[%i,%i] cropped to [%i,%i] --',size(img,2),size(img,3),sy,sx);
+    fprintf(' -- original FOV [y,x]=[%i,%i] cropped to [%i,%i] -- ',size(img,2),size(img,3),sy,sx);
 end
 
 for i=0:(info.max_idx-1)
@@ -300,18 +317,17 @@ data = data(:,FOV(3):FOV(4),FOV(1):FOV(2),:);
 
 end
 
-function res = is_multiplane(fname)
-
-global info
-a = sbxread(fname,0,1);
-if isfield(info,'otwave') && ~isempty(info.otwave) && length(info.otwave)>1
-    res = length(info.otwave);
-else
-    res = 1;
-end
-
-end
-
+% function res = is_multiplane(fname)
+% 
+% global info
+% a = sbxread(fname,0,1);
+% if isfield(info,'otwave') && ~isempty(info.otwave) && length(info.otwave)>1
+%     res = length(info.otwave);
+% else
+%     res = 1;
+% end
+% 
+% end
 
 function data = do_grating_interpolation(data,extend,startind)
 
