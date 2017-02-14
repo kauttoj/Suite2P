@@ -82,6 +82,10 @@ rng('default')
 % keyboard;
 if isfield(h.dat, 'dat')
     h.dat = h.dat.dat;
+    try
+        h.statLabels = h.dat.statLabels;
+    catch
+    end
 else
     h.dat.filename = fullfile(filepath1, filename1);
     h.dat.cl.Ly       = numel(h.dat.ops.yrange);
@@ -238,6 +242,7 @@ function pushbutton84_Callback(hObject, eventdata, h)
 % save proc file and rules file
 h.dat.F.trace = [];
 dat = h.dat;
+dat.statLabels = h.statLabels;
 refresh_stats(h,2);
 try
     save([h.dat.filename(1:end-4) '_proc.mat'], 'dat')
@@ -449,6 +454,7 @@ if x>=1 && y>=1 && x<=h.dat.cl.Lx && y<=h.dat.cl.Ly && h.dat.res.iclust(y,x)>0
            str = cat(2, str, strnew);
        end
     end
+    str = cat(2, str, sprintf('Cell ID = %i',ichosen));
     
    set(h.text54,'String', str);
 end

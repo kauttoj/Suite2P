@@ -77,6 +77,8 @@ end
 
 save([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat'],'cfg');
 
+ops0.klab_info = cfg;
+
 %%------------------------------------
 db(1).mouse_name    = cfg.mouse_name;
 db(1).date          = cfg.date;

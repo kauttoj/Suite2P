@@ -54,6 +54,9 @@ try
     fclose(fid);
 catch err2    
     warning('!!!!!!! Failed to read data, reason: %s',err2.message);
+    if exist('fid','var')
+        fclose(fid);
+    end
 end
 
 cd(HOME);
