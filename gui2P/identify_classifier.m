@@ -90,7 +90,7 @@ if (flag==0)
     end
 end
 
-fprintf('Classifier is ready to go!\n');
+fprintf(' Classifier is ready to go!\n\n');
 
 end
 

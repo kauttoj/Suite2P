@@ -71,163 +71,162 @@ try
     
     % construct dat. Everything is loaded except F and Fneu.
     refresh_stats(h,2);
+    fprintf('\nLoading file %s ...',fullfile(filepath1, filename1));
     h.dat = load(fullfile(filepath1, filename1));
+    fprintf(' done\n');
     
     flag = 1;
-catch
+catch err
+    fprintf('\nFile load failed!! Reason: %s\n',err.message);
 end
 
 if flag
     % if the user selected a file, do all the initializations
-rng('default')
-
-% keyboard;
-if isfield(h.dat, 'dat')
+    rng('default')
     
-    h.dat = h.dat.dat;
-    try
-        h.statLabels = h.dat.classifier_backup.statLabels;
-    catch
+    % keyboard;
+    if isfield(h.dat, 'dat')
         
-    end
-    h.is_shared_classifier = 0;
-    rootS2p_PATH=fileparts(which('run_pipeline'));
-    run([rootS2p_PATH,filesep,'SHARED_CLASSIFIER_PATHS.m']);
-    if exist('CLASSIFIER_DATAFILE','var')        
+        h.dat = h.dat.dat;       
+        h.statLabels = h.dat.classifier_backup.statLabels;
         h.is_shared_classifier = 0;
-        for i=1:length(CLASSIFIER_DATAFILE)
-            if strcmp(h.dat.cl.fpath,CLASSIFIER_DATAFILE(i).file)
-                h.is_shared_classifier = 1;
-                break;
+        rootS2p_PATH=fileparts(which('run_pipeline'));
+        run([rootS2p_PATH,filesep,'SHARED_CLASSIFIER_PATHS.m']);
+        if exist('CLASSIFIER_DATAFILE','var')
+            h.is_shared_classifier = 0;
+            for i=1:length(CLASSIFIER_DATAFILE)
+                if strcmp(h.dat.cl.fpath,CLASSIFIER_DATAFILE(i).file)
+                    h.is_shared_classifier = 1;
+                    break;
+                end
             end
         end
-    end
-    h = classROI(h);
-    h.st0(:,1) = [h.dat.stat.iscell]; % do not use classified prediction, use existing
-   
-else
-    h.dat.filename = fullfile(filepath1, filename1);
-    h.dat.cl.Ly       = numel(h.dat.ops.yrange);
-    h.dat.cl.Lx       = numel(h.dat.ops.xrange);
-    
-    % make up iclut here
-    try
-        [h.dat.res.iclust, h.dat.res.lambda, h.dat.res.lambda0] =...
-            getIclust(h.dat.stat, h.dat.cl);
-    catch
-    end
-    h.dat.res.iclust = reshape(h.dat.res.iclust, h.dat.cl.Ly, h.dat.cl.Lx);
-%     h.dat.res.lambda = reshape(h.dat.res.lambda, h.dat.cl.Ly, h.dat.cl.Lx);
-    
-    h.dat.ops.Nk = numel(h.dat.stat);
-    h.dat.cl.rands_orig   = .1 + .8 * rand(1, h.dat.ops.Nk);
-    h.dat.cl.rands        = h.dat.cl.rands_orig;
-    
-    if isfield(h.dat.ops, 'clustrules')
-       h.dat.clustrules = h.dat.ops.clustrules; 
-    end
-    
-    % set up classifier
-    h.dat.cl.threshold  = 0.5;
-    h                   = identify_classifier(h);    
-    h                   = classROI(h);
-    
-    % set all quadrants as not visited
-    h.quadvalue = zeros(3);
-    for j = 1:3
-        for i = 1:3
-            set(h.(sprintf('Q%d%d', j,i)), 'BackgroundColor',[.92 .92 .92]);
+        h = classROI(h);
+        h.st0(:,1) = [h.dat.stat.iscell]; % do not use classified prediction, use existing
+        
+    else
+        h.dat.filename = fullfile(filepath1, filename1);
+        h.dat.cl.Ly       = numel(h.dat.ops.yrange);
+        h.dat.cl.Lx       = numel(h.dat.ops.xrange);
+        
+        % make up iclut here
+        try
+            [h.dat.res.iclust, h.dat.res.lambda, h.dat.res.lambda0] =...
+                getIclust(h.dat.stat, h.dat.cl);
+        catch
         end
-    end
-    
-    h.dat.ylim = [0 h.dat.cl.Ly];
-    h.dat.xlim = [0 h.dat.cl.Lx];    
-    
-    if ~isfield(h.dat.stat,'redcell')
-        for j = 1:numel(h.dat.stat)
-            h.dat.stat(j).redcell = 0;
-            h.dat.stat(j).redprob = 0;
+        h.dat.res.iclust = reshape(h.dat.res.iclust, h.dat.cl.Ly, h.dat.cl.Lx);
+        %     h.dat.res.lambda = reshape(h.dat.res.lambda, h.dat.cl.Ly, h.dat.cl.Lx);
+        
+        h.dat.ops.Nk = numel(h.dat.stat);
+        h.dat.cl.rands_orig   = .1 + .8 * rand(1, h.dat.ops.Nk);
+        h.dat.cl.rands        = h.dat.cl.rands_orig;
+        
+        if isfield(h.dat.ops, 'clustrules')
+            h.dat.clustrules = h.dat.ops.clustrules;
         end
-    end    
-   
-    h.dat.F.ichosen = 1;
-    
-    % loop through redcells and set h.dat.cl.rands(h.dat.F.ichosen) = 0
-    for j = find([h.dat.stat.redcell])
-        h.dat.cl.rands(j) = 0;
+        
+        % set up classifier
+        h.dat.cl.threshold  = 0.5;
+        h                   = identify_classifier(h);
+        h                   = classROI(h);
+        
+        % set all quadrants as not visited
+        h.quadvalue = zeros(3);
+        for j = 1:3
+            for i = 1:3
+                set(h.(sprintf('Q%d%d', j,i)), 'BackgroundColor',[.92 .92 .92]);
+            end
+        end
+        
+        h.dat.ylim = [0 h.dat.cl.Ly];
+        h.dat.xlim = [0 h.dat.cl.Lx];
+        
+        if ~isfield(h.dat.stat,'redcell')
+            for j = 1:numel(h.dat.stat)
+                h.dat.stat(j).redcell = 0;
+                h.dat.stat(j).redprob = 0;
+            end
+        end
+        
+        h.dat.F.ichosen = 1;
+        
+        % loop through redcells and set h.dat.cl.rands(h.dat.F.ichosen) = 0
+        for j = find([h.dat.stat.redcell])
+            h.dat.cl.rands(j) = 0;
+        end
+        
+        % x and y limits on subquadrants
+        h.dat.figure.x0all = round(linspace(0, 19/20*h.dat.cl.Lx, 4));
+        h.dat.figure.y0all = round(linspace(0, 19/20*h.dat.cl.Ly, 4));
+        h.dat.figure.x1all = round(linspace(1/20 * h.dat.cl.Lx, h.dat.cl.Lx, 4));
+        h.dat.figure.y1all = round(linspace(1/20 * h.dat.cl.Ly, h.dat.cl.Ly, 4));
+        
     end
-   
-    % x and y limits on subquadrants
-    h.dat.figure.x0all = round(linspace(0, 19/20*h.dat.cl.Lx, 4));
-    h.dat.figure.y0all = round(linspace(0, 19/20*h.dat.cl.Ly, 4));
-    h.dat.figure.x1all = round(linspace(1/20 * h.dat.cl.Lx, h.dat.cl.Lx, 4));
-    h.dat.figure.y1all = round(linspace(1/20 * h.dat.cl.Ly, h.dat.cl.Ly, 4));
     
-end
-
-% activate all pushbuttons
-pb = [84 93 101 86 87 89 90 92 103 98 95 96 102 99 100 1 2 104];
-for j = 1:numel(pb)
-    set(eval(sprintf('h.pushbutton%d', pb(j))),'Enable','on')
-end
-pb = [11 12 13 21 22 23 31 32 33];
-for j = 1:numel(pb)
-    set(eval(sprintf('h.Q%d', pb(j))),'Enable','on')
-end
-set(h.full,'Enable', 'on');
-set(h.edit50,'Enable', 'on');
-set(h.edit50,'String', num2str(h.dat.cl.threshold));
-set_Bcolor(h, 1);
-set_maskCcolor(h, 1);
-% select unit normalized ROI brightness
-h.dat.cl.vmap = 'unit';
-set_maskBcolor(h, 1);
-set(h.full, 'BackgroundColor', [1 0 0])
-
-% setup different views of GUI
-h.dat.maxmap = 2;
-ops = h.dat.ops;
-if isfield(ops, 'mimg1') && ~isempty(ops.mimg1)
-    h.dat.mimg(:,:,h.dat.maxmap) = ops.mimg1(ops.yrange, ops.xrange);
-    h.dat.mimg_proc(:,:,h.dat.maxmap) = normalize_image(h.dat.mimg(:,:,h.dat.maxmap));
-end
-h.dat.mimg(:,:,5) = 0;
-
-h.dat.maxmap = h.dat.maxmap + 1;
-if isfield(ops, 'mimgRED') && ~isempty(ops.mimgRED)
-    h.dat.mimg(:,:,h.dat.maxmap) = ops.mimgRED(ops.yrange, ops.xrange);
-    h.dat.mimg_proc(:,:,h.dat.maxmap) = normalize_image(h.dat.mimg(:,:,h.dat.maxmap));
-end
-h.dat.maxmap = h.dat.maxmap + 1;
-if isfield(ops, 'mimgREDcorrected') && ~isempty(ops.mimgREDcorrected)
-    h.dat.mimg(:,:,h.dat.maxmap) = ops.mimgREDcorrected;
-    h.dat.mimg_proc(:,:,h.dat.maxmap) = normalize_image(h.dat.mimg(:,:,h.dat.maxmap));
-end
-h.dat.maxmap = h.dat.maxmap + 1;
-if isfield(ops, 'Vcorr') && ~isempty(ops.Vcorr)
-    h.dat.mimg(:,:,h.dat.maxmap) = ops.Vcorr;
-    h.dat.mimg_proc(:,:,h.dat.maxmap) = normalize_image(h.dat.mimg(:,:,h.dat.maxmap));
-end
-if isfield(ops, 'common_corrmap') && ~isempty(ops.common_corrmap)
-    h.dat.mimg(:,:,h.dat.maxmap) = ops.common_corrmap(ops.yrange,ops.xrange);
-    h.dat.mimg_proc(:,:,h.dat.maxmap) = normalize_image(h.dat.mimg(:,:,h.dat.maxmap));
-end
-
-h.dat.procmap = 0;
-h.dat.map = 1;
-
-N_cells = 0;
-for i=1:length(h.dat.stat)
-   N_cells = N_cells + double(h.dat.stat(i).iscell);
-end
-h.N_cells = N_cells;
-
-redraw_fluorescence(h);
-redraw_figure(h);
-
-guidata(hObject,h)
-
-refresh_stats(h,1);
+    % activate all pushbuttons
+    pb = [84 93 101 86 87 89 90 92 103 98 95 96 102 99 100 1 2 104];
+    for j = 1:numel(pb)
+        set(eval(sprintf('h.pushbutton%d', pb(j))),'Enable','on')
+    end
+    pb = [11 12 13 21 22 23 31 32 33];
+    for j = 1:numel(pb)
+        set(eval(sprintf('h.Q%d', pb(j))),'Enable','on')
+    end
+    set(h.full,'Enable', 'on');
+    set(h.edit50,'Enable', 'on');
+    set(h.edit50,'String', num2str(h.dat.cl.threshold));
+    set_Bcolor(h, 1);
+    set_maskCcolor(h, 1);
+    % select unit normalized ROI brightness
+    h.dat.cl.vmap = 'unit';
+    set_maskBcolor(h, 1);
+    set(h.full, 'BackgroundColor', [1 0 0])
+    
+    % setup different views of GUI
+    h.dat.maxmap = 2;
+    ops = h.dat.ops;
+    if isfield(ops, 'mimg1') && ~isempty(ops.mimg1)
+        h.dat.mimg(:,:,h.dat.maxmap) = ops.mimg1(ops.yrange, ops.xrange);
+        h.dat.mimg_proc(:,:,h.dat.maxmap) = normalize_image(h.dat.mimg(:,:,h.dat.maxmap));
+    end
+    h.dat.mimg(:,:,5) = 0;
+    
+    h.dat.maxmap = h.dat.maxmap + 1;
+    if isfield(ops, 'mimgRED') && ~isempty(ops.mimgRED)
+        h.dat.mimg(:,:,h.dat.maxmap) = ops.mimgRED(ops.yrange, ops.xrange);
+        h.dat.mimg_proc(:,:,h.dat.maxmap) = normalize_image(h.dat.mimg(:,:,h.dat.maxmap));
+    end
+    h.dat.maxmap = h.dat.maxmap + 1;
+    if isfield(ops, 'mimgREDcorrected') && ~isempty(ops.mimgREDcorrected)
+        h.dat.mimg(:,:,h.dat.maxmap) = ops.mimgREDcorrected;
+        h.dat.mimg_proc(:,:,h.dat.maxmap) = normalize_image(h.dat.mimg(:,:,h.dat.maxmap));
+    end
+    h.dat.maxmap = h.dat.maxmap + 1;
+    if isfield(ops, 'Vcorr') && ~isempty(ops.Vcorr)
+        h.dat.mimg(:,:,h.dat.maxmap) = ops.Vcorr;
+        h.dat.mimg_proc(:,:,h.dat.maxmap) = normalize_image(h.dat.mimg(:,:,h.dat.maxmap));
+    end
+    if isfield(ops, 'common_corrmap') && ~isempty(ops.common_corrmap)
+        h.dat.mimg(:,:,h.dat.maxmap) = ops.common_corrmap(ops.yrange,ops.xrange);
+        h.dat.mimg_proc(:,:,h.dat.maxmap) = normalize_image(h.dat.mimg(:,:,h.dat.maxmap));
+    end
+    
+    h.dat.procmap = 0;
+    h.dat.map = 1;
+    
+    N_cells = 0;
+    for i=1:length(h.dat.stat)
+        N_cells = N_cells + double(h.dat.stat(i).iscell);
+    end
+    h.N_cells = N_cells;
+    
+    redraw_fluorescence(h);
+    redraw_figure(h);
+    
+    guidata(hObject,h)
+    
+    refresh_stats(h,1);
 end
 
 function pushbutton2_Callback(hObject, eventdata, h)
@@ -281,9 +280,11 @@ dat.classifier_backup.DATALIMIT = DATALIMIT;
 
 refresh_stats(h,2);
 try
+    fprintf('\nSaving PROC file %s ...',[h.dat.filename(1:end-4) '_proc.mat']);
     save([h.dat.filename(1:end-4) '_proc.mat'],'dat','-v7.3')
-catch err
-    warning('Failed to write PROC file %s: %s',[h.dat.filename(1:end-4) '_proc.mat'],err.message);
+    fprintf(' done\n'); 
+catch err    
+    warning('\nFailed to write PROC file %s: %s',[h.dat.filename(1:end-4) '_proc.mat'],err.message);
 end
 refresh_stats(h,1);
 %
@@ -293,9 +294,11 @@ prior       = h.prior;
 st          = cat(1, h.st, h.st0);
 refresh_stats(h,2);
 try
+    fprintf('\nUpdating classifier (total %i samples) file %s ...',size(st,1),h.dat.cl.fpath);    
     save(h.dat.cl.fpath, 'st', 'statLabels', 'prior')
+    fprintf(' done\n');     
 catch err
-    warning('Failed to write classifier file %s: %s',h.dat.cl.fpath,err.message);
+    warning('\nFailed to write classifier file %s: %s',h.dat.cl.fpath,err.message);
 end
 refresh_stats(h,1);
 

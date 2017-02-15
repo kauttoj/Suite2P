@@ -17,8 +17,8 @@ cfg.delete_raw_tiffs = 1; 			% if 1, all raw tiffs are kept
 cfg.write_aligned_tiffs = 0; 		% if 1, all final tiffs are saved (.bin is kept anyway)
 cfg.write_diagnostic_videos = 0; 	% make video of aligned data (NOT YET WORKING!)
 cfg.use_GPU = 0; %				% for systems with good nvidia GPU (sometimes unstable)
-cfg.fix_baseline = 1; 			% 1 = normalize intensity, 2 = normalize intensity + detrending (for each file). If no water loss occurs, can use 0
-cfg.num_cores = 4;				% set maximum number of cores to use (reduce if memory runs out)
+cfg.fix_baseline = 0; 			% 1 = normalize intensity, 2 = normalize intensity + detrending (for each file). If no water loss occurs, can use 0
+%cfg.num_cores = 4;				% set maximum number of cores to use (reduce if memory runs out)
 
 cfg.programpath = SUITE2P_PATH;
 
