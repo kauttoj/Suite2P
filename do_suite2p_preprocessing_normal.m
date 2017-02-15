@@ -2,25 +2,26 @@ clc;
 clearvars;
 close all;
 
-SUITE2P_PATH = '/home/kuhlmanlab/code/klab_Suite2P';
+SUITE2P_PATH = 'Z:\commonKlabData\klab_Suite2P_2.14.2017';
 
 cfg.do_nonridig_correction = 0;
-cfg.channels = 1;
-cfg.planes = 1;
-cfg.do_deconvolution = 1;
-cfg.image_FOV = [25,758,4,511]; % [left,right,up,down]
-cfg.grating_size = [0,0]; % [left,right] in pixels AFTER cropping operation with selected FOV (interpolation to remove empty lines)
-cfg.cell_diameter = 15; % in pixels!
-cfg.framerate = 15.4883;   % For each pixel. Approximate, for initialization of deconvolution kernel.
-cfg.tempdata_folder = [];%;tempdir;
-cfg.delete_raw_tiffs = 1;
-cfg.write_aligned_tiffs = 0;
-cfg.write_diagnostic_videos = 0;
-cfg.use_GPU = 0; %
-cfg.fix_baseline = 1; % do piecewise linear detrending of aligned data and fix baselines between files (slow, can take ~2 hours)
+cfg.channels = 1; 				% 1 (only green) or 2 (green+red). If less than real number, remaining channels omitted.
+cfg.planes = 1; 				% how many planes
+cfg.do_deconvolution = 1; 			% should be always 1
+cfg.image_FOV = [40,720,8,512]; 	% [left,right,up,down]
+cfg.grating_size = [0,0]; 			% [left,right] in pixels AFTER cropping operation with selected FOV (interpolation to remove empty lines)
+cfg.cell_diameter = 14; 			% in pixels! (14 is optimal for WAVE stuff)
+%cfg.framerate = 15.4883;   		% acquisition! Automatically converted for planes. Keep empty to read from SBX files (recommended).
+cfg.tempdata_folder = []; 			% if 0, using system tempdir()
+cfg.delete_raw_tiffs = 1; 			% if 1, all raw tiffs are kept
+cfg.write_aligned_tiffs = 0; 		% if 1, all final tiffs are saved (.bin is kept anyway)
+cfg.write_diagnostic_videos = 0; 	% make video of aligned data (NOT YET WORKING!)
+cfg.use_GPU = 0; %				% for systems with good nvidia GPU (sometimes unstable)
+cfg.fix_baseline = 1; 			% 1 = normalize intensity, 2 = normalize intensity + detrending (for each file). If no water loss occurs, can use 0
+cfg.num_cores = 4;				% set maximum number of cores to use (reduce if memory runs out)
 
-addpath(SUITE2P_PATH);
 cfg.programpath = SUITE2P_PATH;
+addpath(SUITE2P_PATH);
 
 DATAFOLDER{1} = '/mnt/Sparrowhawk/RawCaDataArchive/Pati/2036_2R_12102016/';
 DATAFOLDER{2} = '/mnt/Sparrowhawk/RawCaDataArchive/Pati/2068_2R_12192016/';

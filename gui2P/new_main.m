@@ -25,6 +25,8 @@ function new_main_OpeningFcn(hObject, eventdata, h, varargin)
 % This function has no output args, see OutputFcn.
 % varargin   command line arguments to new_main (see VARARGIN)
 
+fprintf('\n\n ---- GUI version 2/14/2017 (klab mod)----\n\n');
+
 axes(h.axes2);
 set(gca, 'xtick', [], 'ytick', [])
 set(gca, 'xcolor', 'w', 'ycolor', 'w')
@@ -83,8 +85,9 @@ rng('default')
 if isfield(h.dat, 'dat')
     h.dat = h.dat.dat;
     try
-        h.statLabels = h.dat.statLabels;
+        h.statLabels = h.dat.classifier_backup.statLabels;
     catch
+        
     end
 else
     h.dat.filename = fullfile(filepath1, filename1);
@@ -240,18 +243,34 @@ guidata(hObject,h);
 
 function pushbutton84_Callback(hObject, eventdata, h)
 % save proc file and rules file
+DATALIMIT = 10000000;
+
 h.dat.F.trace = [];
 dat = h.dat;
-dat.statLabels = h.statLabels;
+
+h.st0(:,1) = double([h.dat.stat.iscell]);
+st = cat(1, h.st, h.st0);
+S = size(st,1);
+if S>DATALIMIT
+    warning('Classification datafile has %i samples, saving only latest %i!',S,DATALIMIT)
+    st = st((end-DATALIMIT+1):end,:);
+end    
+
+dat.classifier_backup.st = st;
+dat.classifier_backup.prior = h.prior;
+dat.classifier_backup.statLabels = h.statLabels;
+dat.classifier_backup.timestamp = char(datetime('now'));
+dat.classifier_backup.classifier_path = h.dat.cl.fpath;
+dat.classifier_backup.DATALIMIT = DATALIMIT;
+
 refresh_stats(h,2);
 try
-    save([h.dat.filename(1:end-4) '_proc.mat'], 'dat')
+    save([h.dat.filename(1:end-4) '_proc.mat'],'dat','-v7.3')
 catch err
-    warning('Failed to write file %s: %s',[h.dat.filename(1:end-4) '_proc.mat'],err.message);
+    warning('Failed to write PROC file %s: %s',[h.dat.filename(1:end-4) '_proc.mat'],err.message);
 end
 refresh_stats(h,1);
 %
-h.st0(:,1) = double([h.dat.stat.iscell]);
 %
 statLabels  = h.statLabels;
 prior       = h.prior;
@@ -260,8 +279,8 @@ refresh_stats(h,2);
 try
     save(h.dat.cl.fpath, 'st', 'statLabels', 'prior')
 catch err
-    warning('Failed to write file %s: %s',h.dat.cl.fpath,err.message);
-end 
+    warning('Failed to write classifier file %s: %s',h.dat.cl.fpath,err.message);
+end
 refresh_stats(h,1);
 
 
