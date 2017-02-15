@@ -83,12 +83,28 @@ rng('default')
 
 % keyboard;
 if isfield(h.dat, 'dat')
+    
     h.dat = h.dat.dat;
     try
         h.statLabels = h.dat.classifier_backup.statLabels;
     catch
         
     end
+    h.is_shared_classifier = 0;
+    rootS2p_PATH=fileparts(which('run_pipeline'));
+    run([rootS2p_PATH,filesep,'SHARED_CLASSIFIER_PATHS.m']);
+    if exist('CLASSIFIER_DATAFILE','var')        
+        h.is_shared_classifier = 0;
+        for i=1:length(CLASSIFIER_DATAFILE)
+            if strcmp(h.dat.cl.fpath,CLASSIFIER_DATAFILE(i).file)
+                h.is_shared_classifier = 1;
+                break;
+            end
+        end
+    end
+    h = classROI(h);
+    h.st0(:,1) = [h.dat.stat.iscell]; % do not use classified prediction, use existing
+   
 else
     h.dat.filename = fullfile(filepath1, filename1);
     h.dat.cl.Ly       = numel(h.dat.ops.yrange);
@@ -621,11 +637,24 @@ rootS2p = which('run_pipeline');
 if isempty(rootS2p)
     error('could not identify Suite2p location! where is new_main.m?')
 end
+rootS2p_PATH=fileparts(rootS2p);
 rootS2p = fileparts(rootS2p);
 rootS2p = fullfile(rootS2p, 'configFiles');
 
 [filename1,filepath1]   = uigetfile(fullfile(rootS2p, '*.mat'), 'Select classifier file');
 if filename1
+    
+    run([rootS2p_PATH,filesep,'SHARED_CLASSIFIER_PATHS.m']);
+    if exist('CLASSIFIER_DATAFILE','var')        
+        h.is_shared_classifier = 0;
+        for i=1:length(CLASSIFIER_DATAFILE)
+            if strcmp(filename1,CLASSIFIER_DATAFILE(i).file)
+                h.is_shared_classifier = 1;
+                break;
+            end
+        end
+    end    
+    
     h.dat.cl.fpath          = fullfile(filepath1, filename1);
     h                       = classROI(h);
     

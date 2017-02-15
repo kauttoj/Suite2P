@@ -1,7 +1,7 @@
 function h = classROI(h)
 
 [~, filename1] = fileparts(h.dat.cl.fpath);
-set(h.text50,'String', [filename1 '.mat']);
+set(h.text50,'String', [filename1 '.mat'],'ForegroundColor',[1,0,0]);
 try
    if h.is_shared_classifier==1
         set(h.text50,'ForegroundColor',[0.1961    0.8039    0.1961]);
