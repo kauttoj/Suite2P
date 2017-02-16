@@ -135,7 +135,9 @@ ops0.sensorTau              = 0.4; % decay half-life (or timescale). Approximate
 ops0.maxNeurop              = Inf; % for the neuropil contamination to be less than this (sometimes good, i.e. for interneurons)
 ops0.recomputeKernel        = 1; % whether to re-estimate kernel during optimization (default kernel is "reasonable", if you give good timescales)
 ops0.sameKernel             = 1; % whether the same kernel should be estimated for all neurons (robust, only set to 0 if SNR is high and recordings are long)
-ops0.detrend_window = 100;   % in secods, 50s = 1/50 = 0.02Hz
+ops0.detrend_window         = 100;   % in secods, 100s = 1/100 = 0.01Hz
+
+cfg.do_deconvolution = 1; % always need run this to get refined neuropil coefficients!
 
 % red channel options
 % redratio = red pixels inside / red pixels outside
@@ -158,12 +160,11 @@ end
 % deconvolved data into (dat.)cl.dcell, and neuropil subtraction coef
 if cfg.do_deconvolution
     add_deconvolution(ops0, db0(1));
-end
-
-try
-   add_clean_signals(ops0, db0(1));
-catch err
-   warning('Failed to add cleaned signals into datastructure: %s',err.message);
+%     try
+%         add_clean_signals(ops0, db0(1));
+%     catch err
+%         warning('Failed to add cleaned signals into datastructure: %s',err.message);
+%     end
 end
 
 % add red channel information (if it exists)
@@ -186,6 +187,12 @@ if isfield(db0,'expred') && ~isempty(db0(1).expred)
 end
 
 save([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat'],'cfg');
+
+try
+    create_diagnostic_figures(ops0, db0(1));
+catch err
+    warning('Failed to create diagnostic data!, reason: %s',err.message);
+end
 
 root = [ops0.ResultsSavePath,filesep,db(1).mouse_name,filesep,db(1).date];
 d = dir(root);
@@ -226,7 +233,7 @@ if cfg.delete_raw_tiffs==1
             end
         end
     end    
-    fprintf(' done (total % TIFF files removed)\n',count);    
+    fprintf(' done (total %i TIFF files removed)\n',count);    
     try
         rmdir([cfg.tempdata_folder,filesep,cfg.mouse_name,filesep,cfg.date]);
         rmdir([cfg.tempdata_folder,filesep,cfg.mouse_name]);

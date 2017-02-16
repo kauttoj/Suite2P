@@ -179,6 +179,7 @@ end
 
 %%
 for i = 1:numel(ops1)
+    
     ops         = ops1{i};    
     ops.iplane  = i;
     
@@ -202,27 +203,14 @@ for i = 1:numel(ops1)
         [ops, stat, model]           = sourcery(ops,U, model);
         
         % extract dF
-        [ops, stat, Fcell, FcellNeu,baselines,scalefactors] = extractSignals(ops, model, stat);
+        [ops, stat, Fcell, FcellNeu] = extractSignals(ops, model, stat);
 
         % apply user-specific clustrules to infer stat.iscell
         stat                         = classifyROI(stat, ops.clustrules);
-                
-%         mimg1 = ops.mimg1(ops.yrange, ops.xrange);
-%         baselines1 = nan(1,numel(stat),1);
-%         scalefactors1 = baselines1;
-%         for k = 1:numel(stat)
-%             w = stat(k).lam(:)';
-%             ww = w/sum(w);
-%             ipix = stat(k).ipix(:)';
-%             if ~isempty(ipix)
-%                 scalefactors1(k) = ww *ops.sdmov(ipix)';
-%                 baselines1(k) = w*mimg1(ipix)';
-%             end
-%         end        
-        
+                       
         save(sprintf('%s/F_%s_%s_plane%d.mat', ops.ResultsSavePath, ...
             ops.mouse_name, ops.date, ops.iplane),  'ops',  'stat',...
-            'Fcell', 'FcellNeu','scalefactors','baselines','-v7.3');
+            'Fcell', 'FcellNeu','-v7.3');        
     end
     
     if ops.DeleteBin

@@ -5,20 +5,17 @@ hold off
 ichosen = h.dat.F.ichosen;
 F = [];
 Fneu = [];
-F_dff = [];
-border = 0;
+border = zeros(1,1+numel(h.dat.Fcell));
 for j = 1:numel(h.dat.Fcell)
     F    = cat(2, F, h.dat.Fcell{j}(ichosen, :));
-    border = [border,length(F)];
+    border(j+1) = length(F);
     Fneu = cat(2, Fneu, h.dat.FcellNeu{j}(ichosen, :));
-    if isfield(h.dat,'F_clean')
-        F_dff = cat(2, F_dff, h.dat.F_clean{j}(ichosen, :));
-    end
 end
 
-if h.show_dff==1 && ~isempty(F_dff)
-    
-    th = prctile(F_dff,75);
+F_dff = F - h.dat.stat(ichosen).neuropilCoefficient*Fneu + mean(Fneu);
+
+if h.show_dff==1 && ~isempty(F_dff)    
+    th = prctile(F_dff,80);
     F0 = mean(F_dff(F_dff<th));
     F_dff = (F_dff-F0)/F0;
     

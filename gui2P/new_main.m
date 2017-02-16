@@ -128,6 +128,7 @@ if flag
         
         % set up classifier
         h.dat.cl.threshold  = 0.5;
+        h.dat.cl.red_threshold  = nan;
         h                   = identify_classifier(h);
         h                   = classROI(h);
         
@@ -175,7 +176,9 @@ if flag
     end
     set(h.full,'Enable', 'on');
     set(h.edit50,'Enable', 'on');
+    set(h.edit51,'Enable', 'on');
     set(h.edit50,'String', num2str(h.dat.cl.threshold));
+    set(h.edit51,'String', num2str(h.dat.cl.red_threshold));
     set_Bcolor(h, 1);
     set_maskCcolor(h, 1);
     % select unit normalized ROI brightness
@@ -492,7 +495,7 @@ if x>=1 && y>=1 && x<=h.dat.cl.Lx && y<=h.dat.cl.Ly && h.dat.res.iclust(y,x)>0
            str = cat(2, str, strnew);
        end
     end
-    str = cat(2, str, sprintf('Cell ID = %i',ichosen));
+    str = cat(2, str, sprintf('Cell ID = %i (%i)',ichosen,sum([h.dat.stat(1:ichosen).iscell])));
     
    set(h.text54,'String', str);
 end
@@ -597,9 +600,14 @@ guidata(hObject,h);
 % --- Executes on button press in pushbutton104.
 function pushbutton104_Callback(hObject, eventdata, h)
 hval = [h.dat.stat.redprob];
-if sum([h.dat.stat.redcell]) > 0
-   Th = min(hval(logical([h.dat.stat.redcell])));
+if isnan(h.dat.cl.red_threshold)
+    if sum([h.dat.stat.redcell]) > 0
+        Th = min(hval(logical([h.dat.stat.redcell])));
+    else
+        Th = 1;
+    end
 else
+    hval = hval>=h.dat.cl.red_threshold;
     Th = 1;
 end
 h.dat.cl.rands   = max(0, min(1, .7 - .7*hval/Th));
@@ -679,6 +687,7 @@ end
 redraw_figure(h);
 
 guidata(hObject,h);
+
 
 function edit50_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to edit50 (see GCBO)
@@ -818,11 +827,41 @@ if isfield(handles,'st0')
 end
 switch state
     case 1
-        thestr = sprintf('%d Segments\n%d (%i%%) Cells\nReady.',nrois,ncells,round(100*ncells/nrois));
+        thestr = sprintf('%d Segments\n%d (%i%%) Cells\n\nReady.',nrois,ncells,round(100*ncells/nrois));
         set(handles.datastatsID,'BackGroundcolor','g')
     case 2
-        thestr = sprintf('%d Segments\n%d (%i%%) Cells\nPROCESSING!',nrois,ncells,round(100*ncells/nrois));
+        thestr = sprintf('%d Segments\n%d (%i%%) Cells\n\nPROCESSING!!',nrois,ncells,round(100*ncells/nrois));
         set(handles.datastatsID,'BackGroundcolor','r')
 end
 set(handles.datastatsID,'String',thestr);
 drawnow();
+
+
+
+function edit51_Callback(hObject, eventdata, h)
+% hObject    handle to edit51 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of edit51 as text
+%        str2double(get(hObject,'String')) returns contents of edit51 as a double
+h.dat.cl.red_threshold = str2double(get(h.edit51,'String'));
+for j = 1:length(h.dat.stat)
+    h.dat.stat(j).isred = h.dat.stat(j).cellProb > h.dat.cl.red_threshold;
+end
+redraw_figure(h);
+
+guidata(hObject,h);
+
+
+% --- Executes during object creation, after setting all properties.
+function edit51_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to edit51 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end

@@ -18,8 +18,12 @@ for i = 1:length(ops.planesToProcess)
     if isfield(A, 'dat')
         A = A.dat; % just in case...
     end    
-
+    
+    if min([A.stat.neuropilCoefficient])<0
+       warning('Total %i neuropil coefficients were less than zero, all set to zero!',sum([A.stat.neuropilCoefficient]<0));
+    end
     coefNeu = max(0,[A.stat.neuropilCoefficient]');
+    
     fprintf('..plane %i: %i segments with neuropil coefficients mean %3.2f with 95%% interval %3.2f - %3.2f\n',iplane,length(coefNeu),mean(coefNeu),prctile(coefNeu,2.5),prctile(coefNeu,97.5));
     for k = 1:length(A.Fcell)
         F_clean{k} = A.Fcell{k} -  bsxfun(@times,A.FcellNeu{k},coefNeu);
