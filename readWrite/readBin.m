@@ -6,7 +6,6 @@ function data = readBin(regopsfile,frame_start,framecount,plane)
 % framecount = how many frame to return starting from frame_start
 % plane = which plane to read (default = 1)
 
-
 if nargin<4
     plane = 1;
 end
@@ -25,7 +24,7 @@ try
     fprintf(' done\n');
     
     if nargin<4 && length(ops1)>1
-        warning('Plane not defined for %i-plane data, gettin data from first plane!',length(ops1));
+        warning('Plane not defined for %i-plane data, getting data from first plane!',length(ops1));
     end
     ops = ops1{plane};
     

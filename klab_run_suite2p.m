@@ -191,7 +191,7 @@ save([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat'],'cfg');
 try
     create_diagnostic_figures(ops0, db0(1));
 catch err
-    warning('Failed to create diagnostic data!, reason: %s',err.message);
+    warning('Failed to create diagnostic figures!, reason: %s',err.message);
 end
 
 root = [ops0.ResultsSavePath,filesep,db(1).mouse_name,filesep,db(1).date];
@@ -248,6 +248,16 @@ try
     rmdir([ops0.ResultsSavePath,filesep,db(1).mouse_name]);
 catch
     
+end
+
+try
+    if cfg.write_diagnostic_videos
+        create_diagnostic_movies(ops0, db0(1));
+    else
+       fprintf('\nSkipping diagnostic videos\n');
+    end
+catch err
+    warning('Failed to create diagnostic movies!, reason: %s',err.message);
 end
 
 fprintf('\n\n-------- All done! (%s, took %imin) ----------\n\n',char(datetime('now')),round(toc(starttime)/60));

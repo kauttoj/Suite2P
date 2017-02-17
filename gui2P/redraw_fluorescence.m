@@ -30,7 +30,7 @@ else
     if isfield(h.dat, 'FcellNeu')
         plot(my_conv_local(medfilt1(double(Fneu), 3), 3))
     end
-    ylabel('dF','Fontsize',10);
+    ylabel('Raw signal','Fontsize',10);
 end
 
 y = ylim();

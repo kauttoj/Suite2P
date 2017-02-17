@@ -10,7 +10,7 @@ allops = allops.ops1;
 tic;
 
 fprintf('\n\nCreating diagnostic images\n');
-for plane = 1:ops.planesToProcess
+for plane = 1:ops.nplanes
     
     fprintf('... plane %i\n',plane);
     
@@ -43,12 +43,19 @@ for plane = 1:ops.planesToProcess
         
         handle =  figure('position',[667,511,1275,987],'Visible','off');
         colormap('gray');
-        imagesc(ops1.mimg_end(:,:,file));hold on;
+        imagesc(0.5*ops1.mimg_end(:,:,file)+0.5*ops1.mimg_beg(:,:,file));hold on;
         colorbar;
-        %line()
-        
-        title(titlesrt,'interpreter','none');        
-        fold = [fold_root,filesep,'mean_intensity_plane',num2str(plane)];
+        hold on;
+        title(titlesrt,'interpreter','none');
+        xlabel('x (pixel)')
+        ylabel('y (pixel)')
+        rectangle('Position',[ops1.xrange(1),ops1.yrange(1),range(ops1.xrange),range(ops1.yrange)],'EdgeColor','g','FaceColor','none');    
+                        
+        if ops.nplanes>1
+            fold = [fold_root,filesep,'mean_intensity',filesep,['plane_',num2str(plane)]];
+        else
+            fold = [fold_root,filesep,'mean_intensity'];
+        end
         if ~exist(fold,'dir')
             mkdir(fold);
         end
@@ -60,10 +67,14 @@ for plane = 1:ops.planesToProcess
         frame_ind = (limits(file)+1):limits(file+1);
         N = length(frame_ind);
         
-        fold = [fold_root,filesep,'motion_correction_plane',num2str(plane)];
+        if ops.nplanes>1
+            fold = [fold_root,filesep,'motion_correction',filesep,['plane_',num2str(plane)]];
+        else
+            fold = [fold_root,filesep,'motion_correction'];
+        end        
         if ~exist(fold,'dir')
             mkdir(fold);
-        end        
+        end
         
         mot = ops1.DS(frame_ind,:);
         
@@ -86,22 +97,21 @@ for plane = 1:ops.planesToProcess
         corvals = ops1.CorrFrame(frame_ind,:);  
         ax = plotyy(1:N,sqrt(sum(detrend(mot,'constant').^2,2)),1:N,corvals);
         xlabel('Frame');
-        axes(ax(1)); ylabel('Shift norm (pixels)');
-        axes(ax(2)); ylabel('Correlation with mean');
+        ylabel(ax(1),'Shift norm (pixels)');
+        ylabel(ax(2),'Correlation with mean');
         axis(ax,'tight');
         box on;
         
         % mean ROI intensity
         subplot(3,1,3);        
-        title(sprintf('Mean ROI (total %i) signal stats',size(A.Fcell{file},1)));        
         m = mean(A.Fcell{file},1);
         ax = plotyy(1:N,m,1:N,100*(m-mean(m))/mean(m)); hold on;       
         xlabel('Frame');        
-        axes(ax(2)); ylabel('% change from mean');
-        axes(ax(1)); ylabel('Mean raw signal');
+        ylabel(ax(2),'% change from mean');
+        ylabel(ax(1),'Mean raw signal');
         axis(ax,'tight');
-        title('mean ROI signal')
         box on;
+        title(sprintf('Mean ROI (total %i) signal stats',size(A.Fcell{file},1)));        
         
         saveas(handle,[fold,filesep,sprintf('motion_correction_file%i_plane%i_%s.png',file,plane,str)]);        
         close(handle);                        

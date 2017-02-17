@@ -53,7 +53,7 @@ end
 
 if ops.fix_baseline && processed==0
     
-    fprintf('\n--- Starting file-wise baseline fix ---\n\n')
+    fprintf('\n--- Starting file-wise normalization fix ---\n\n')
     
     for i = 1:numel(ops1)
         
@@ -174,7 +174,7 @@ if ops.fix_baseline && processed==0
                        
     end    
     
-    fprintf('--- signal level fixing finished ---\n\n')
+    fprintf('--- signal normalization finished ---\n\n')
 end
 
 %%
