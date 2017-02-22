@@ -1,5 +1,8 @@
-function add_red_channel(ops, mimgR,mimgG)
+function add_red_channel(ops,mimgR,mimgG)
 
+if isempty(mimgR)
+    mimgR = klab_red_channel_mean(ops);
+end
 
 root = ops.ResultsSavePath;
 fregops =  sprintf('regops_%s_%s.mat', ops.mouse_name, ops.date);

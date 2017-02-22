@@ -87,22 +87,24 @@ if flag
     % keyboard;
     if isfield(h.dat, 'dat')
         
-        h.dat = h.dat.dat;       
-        h.statLabels = h.dat.classifier_backup.statLabels;
-        h.is_shared_classifier = 0;
-        rootS2p_PATH=fileparts(which('run_pipeline'));
-        run([rootS2p_PATH,filesep,'SHARED_CLASSIFIER_PATHS.m']);
-        if exist('CLASSIFIER_DATAFILE','var')
+        h.dat = h.dat.dat;
+        if isfield(h.dat,'classifier_backup')
+            h.statLabels = h.dat.classifier_backup.statLabels;
             h.is_shared_classifier = 0;
-            for i=1:length(CLASSIFIER_DATAFILE)
-                if strcmp(h.dat.cl.fpath,CLASSIFIER_DATAFILE(i).file)
-                    h.is_shared_classifier = 1;
-                    break;
+            rootS2p_PATH=fileparts(which('run_pipeline'));
+            run([rootS2p_PATH,filesep,'SHARED_CLASSIFIER_PATHS.m']);
+            if exist('CLASSIFIER_DATAFILE','var')
+                h.is_shared_classifier = 0;
+                for i=1:length(CLASSIFIER_DATAFILE)
+                    if strcmp(h.dat.cl.fpath,CLASSIFIER_DATAFILE(i).file)
+                        h.is_shared_classifier = 1;
+                        break;
+                    end
                 end
             end
+            h = classROI(h);
+            h.st0(:,1) = [h.dat.stat.iscell]; % do not use classified prediction, use existing
         end
-        h = classROI(h);
-        h.st0(:,1) = [h.dat.stat.iscell]; % do not use classified prediction, use existing
         
     else
         h.dat.filename = fullfile(filepath1, filename1);
@@ -178,6 +180,9 @@ if flag
     set(h.edit50,'Enable', 'on');
     set(h.edit51,'Enable', 'on');
     set(h.edit50,'String', num2str(h.dat.cl.threshold));
+    if ~isfield(h.dat.cl,'red_threshold')
+       h.dat.cl.red_threshold = 0.5;
+    end
     set(h.edit51,'String', num2str(h.dat.cl.red_threshold));
     set_Bcolor(h, 1);
     set_maskCcolor(h, 1);
@@ -606,9 +611,15 @@ if isnan(h.dat.cl.red_threshold)
     else
         Th = 1;
     end
+    for i=1:length(h.dat.stat)
+        h.dat.stat(i).redcell = hval(i)>0.5;
+    end        
 else
     hval = hval>=h.dat.cl.red_threshold;
-    Th = 1;
+    Th = 1;    
+    for i=1:length(h.dat.stat)
+        h.dat.stat(i).redcell = hval(i);
+    end    
 end
 h.dat.cl.rands   = max(0, min(1, .7 - .7*hval/Th));
 h.dat.cl.rands_orig = h.dat.cl.rands;

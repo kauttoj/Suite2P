@@ -1,8 +1,13 @@
-function create_diagnostic_movies(ops, db)
+function create_diagnostic_movies(ops0, db,cfg)
+
+if ischar(db) && ischar(ops0)
+    load(db);
+    load(ops0);
+end
 
 BATCH_SIZE = 500; % how many frames to read at once
 
-ops = build_ops3(db, ops);
+ops = build_ops3(db, ops0);
 
 fregops =  sprintf('regops_%s_%s.mat', ops.mouse_name, ops.date);
 ops1 = load(fullfile(ops.RegFileRoot, fregops));
@@ -105,6 +110,12 @@ parfor file = 1:numel(ops1)
 end
 
 fprintf('all done (took %is)\n\n',round(toc));
+
+if nargin==3
+    load(cfg);    
+    cfg.processing_stage = 6;
+    save(cfg.CONFIGFILE,'cfg');
+end
 
 end
 

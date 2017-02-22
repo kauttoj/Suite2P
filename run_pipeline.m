@@ -1,5 +1,9 @@
-function  run_pipeline(db, ops0)
+function  run_pipeline(db, ops0,cfg)
 
+if ischar(db) && ischar(ops0)
+    load(db);
+    load(ops0);
+end
 % ops0.TileFactor (or db(iexp).TileFactor) can be set to multiply the number of default tiles for the neuropil
 
 ops0.nimgbegend                     = getOr(ops0, {'nimgbegend'}, 0);
@@ -72,8 +76,7 @@ if ops.fix_baseline && processed==0
         fprintf('plane %i with %i blocks and %i frames\n',i,length(ops.Nframes),sum(ops.Nframes));
         
         fprintf(' computing mean...\n');
-        for block = 1:length(ops.Nframes);
-            
+        for block = 1:length(ops.Nframes);            
             data = fread(fid,  Ly*Lx*ops.Nframes(block), '*uint16');
             data = single(reshape(data, Ly, Lx, []));
             %
@@ -222,3 +225,9 @@ end
 
 % clean up
 fclose all;
+
+if nargin==3
+    load(cfg);
+    cfg.processing_stage = 2;
+    save(cfg.CONFIGFILE,'cfg');
+end

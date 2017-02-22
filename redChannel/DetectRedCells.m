@@ -1,7 +1,14 @@
+function DetectRedCells(db,ops0,cfg)
 
+if ischar(db) && ischar(ops0)
+    load(db);
+    load(ops0);
+end
 
-ops = build_ops3(db0(iexp), ops0);
-redcells = [];
+ops = build_ops3(db, ops0);
+
+add_red_channel(ops,[],[]);  
+
 for i = 1:length(ops.planesToProcess)
     iplane  = ops.planesToProcess(i);
     try
@@ -139,8 +146,11 @@ for i = 1:length(ops.planesToProcess)
     save(fname, '-struct', 'dat')
 end
 
-
-
+if nargin==3
+    load(cfg);
+    cfg.processing_stage = 4;
+    save(cfg.CONFIGFILE,'cfg');
+end
 
 
 

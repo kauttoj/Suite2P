@@ -1,6 +1,11 @@
-function create_diagnostic_figures(ops, db)
+function create_diagnostic_figures(ops0, db,cfg)
 
-ops = build_ops3(db, ops);
+if ischar(db) && ischar(ops0)
+    load(db);
+    load(ops0);
+end
+
+ops = build_ops3(db, ops0);
 
 root = ops.ResultsSavePath;
 fregops =  sprintf('regops_%s_%s.mat', ops.mouse_name, ops.date);
@@ -80,7 +85,7 @@ for plane = 1:ops.nplanes
         
         mult_align(file,1:2) = mean(mot);
                 
-        handle = figure('Visible','off','position',[781         491         899        1007],'PaperPositionMode','auto');
+        handle = figure('Visible','off','position',[1000,770,680,728],'PaperPositionMode','auto');
         
         subplot(3,1,1);
         plot(detrend(mot));
@@ -123,7 +128,7 @@ for plane = 1:ops.nplanes
     axis tight;
     ylabel('Mean relative shift (pixels)');
     legend('Y','X','location','best');
-    title(sprintf('Experiment %s (%i files), plane %i',ops1.klab_info.experiment_ID,size(mult_align,1),plane));
+    title(sprintf('Experiment %s (%i files), plane %i',ops1.klab_info.experiment_ID,size(mult_align,1),plane),'interpreter','none');
     set(handle.CurrentAxes,'XTick',1:size(mult_align,1),'XTicklabel',all_str,'XTickLabelRotation',90,'ticklabelinterpreter','none','FontSize',12);    
     saveas(handle,[fold_root,filesep,sprintf('multialignment_plane%i_%s.png',plane,ops1.klab_info.experiment_ID)]);
 
@@ -131,5 +136,10 @@ end
 
 fprintf('all done (took %is)\n\n',round(toc));
 
+if nargin==3
+    load(cfg);    
+    cfg.processing_stage = 5;
+    save(cfg.CONFIGFILE,'cfg');
+end
 
 end

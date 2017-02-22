@@ -1,4 +1,11 @@
-function add_deconvolution(ops, db)
+function add_deconvolution(ops, db, cfg)
+
+if ischar(db) && ischar(ops)
+    load(db);
+    load(ops);
+    ops = ops0;
+end
+
 ops = build_ops3(db, ops);
 ops0 = ops;
 
@@ -36,8 +43,7 @@ for i = 1:length(ops.planesToProcess)
     ops.sameKernel   = getOr(ops0, {'sameKernel'}, 1);
     ops.maxNeurop    = getOr(ops0, {'maxNeurop'}, Inf);
     ops.recomputeKernel    = getOr(ops0, {'recomputeKernel'}, 0);
-    
-    
+        
     fprintf('Spike deconvolution, plane %d... \n', iplane)
     
     % split data into batches
@@ -46,5 +52,12 @@ for i = 1:length(ops.planesToProcess)
     dat.stat = stat;
     
     save(fpath, '-struct', 'dat')
+        
+end
+
+if nargin==3
+    load(cfg);
+    cfg.processing_stage = 3;
+    save(cfg.CONFIGFILE,'cfg');
 end
 %

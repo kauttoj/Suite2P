@@ -1,7 +1,7 @@
 function cfg = klab_run_suite2p(cfg)
 
 if exist(cfg.programpath, 'dir')
-	addpath(genpath(cfg.programpath)) % add local path to the toolbox
+	addpath(genpath(cfg.programpath)); % add local path to the toolbox
 else
 	error('toolbox_path does not exist, please change toolbox_path');
 end
@@ -16,8 +16,12 @@ if ~exist(cfg.outpath,'dir')
     end
 end
 
+if isempty(cfg.tempdata_folder)
+    cfg.tempdata_folder = [cfg.outpath,filesep,'raw_data'];
+end
+
 diary off
-pause(0.5);
+pause(2); % allow some time to write buffer
 if exist(diaryfile,'file')
     try
         delete(diaryfile);
@@ -40,10 +44,32 @@ fprintf('\n-------- Starting Suite2P pipeline (%s) ----------\n\n',char(datetime
 if ~isfield(cfg,'num_cores')
     cfg.num_cores=[];
 end
-    
-klab_createpool(cfg.num_cores);
 
-if exist([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat'],'file')
+cfg.mouse_name = cfg.experiment_ID; % subfolder, level1
+cfg.date = 'suite2p'; % subfolder, level 2
+cfg.processing_stage = 0;
+
+if ~isfield(cfg,'use_cluster_computing')
+   cfg.use_cluster_computing = 1;
+end
+    
+if cfg.use_cluster_computing
+    fprintf('\nNote: Pipeline is running in CLUSTER mode using PBS scheduler (not for desktop use!)\n\n');
+    JOBDIR = [cfg.outpath,filesep,'job_scripts'];
+    if ~exist(JOBDIR,'dir')
+        mkdir(JOBDIR);        
+    end
+    if ~exist(JOBDIR,'dir')
+       error('Could not create/find job file directory %s!',JOBDIR);
+    end
+    cfg.JOBDIR = JOBDIR;
+else
+    klab_createpool(cfg.num_cores);
+end
+
+cfg.CONFIGFILE = [cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat'];
+
+if exist(cfg.CONFIGFILE,'file')
     
     fprintf('!! Old CFG file found, trying to use that...');
     old_cfg = load([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat']);
@@ -65,17 +91,20 @@ if exist([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat'],'file
         cfg.expred=old_cfg.cfg.expred;
         cfg.framerate = old_cfg.cfg.framerate;
         cfg.fileinfo=old_cfg.cfg.fileinfo;
-        cfg.tempdata_folder=old_cfg.cfg.tempdata_folder;
-        fprintf(' success!! Skipping SBX conversion\n\n');
+        cfg.tempdata_folder=old_cfg.cfg.tempdata_folder; 
+        fprintf(' success!! Skipping SBX conversion\n\n');        
     catch err
-       fprintf(' FAILED! Running full SBX conversion\n');
+       fprintf(' FAILED (reason: %s)! Running full SBX conversion\n',err.message);
+       save(cfg.CONFIGFILE,'cfg');
        cfg = klab_suite2pConverter(cfg); 
     end
 else
+    save(cfg.CONFIGFILE,'cfg');
     cfg = klab_suite2pConverter(cfg);
 end
 
-save([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat'],'cfg');
+cfg.processing_stage = 1;
+save(cfg.CONFIGFILE,'cfg');
 
 ops0.klab_info = cfg;
 
@@ -149,22 +178,17 @@ ops0.redmax                 = 1; % the higher the max the more NON-red cells
 %% RUN THE PIPELINE HERE
 db0 = db;
 
-run_pipeline(db(1), ops0);
+if cfg.use_cluster_computing
+    run_pipeline_cluster(db(1), ops0,cfg);
+else    
+    run_pipeline(db(1), ops0);
+    add_deconvolution(ops0, db0(1));
+end
 
 try
     diary(diaryfile);
 catch err
     warning('Failed to write to diary: %s',err.message);
-end
-    
-% deconvolved data into (dat.)cl.dcell, and neuropil subtraction coef
-if cfg.do_deconvolution
-    add_deconvolution(ops0, db0(1));
-%     try
-%         add_clean_signals(ops0, db0(1));
-%     catch err
-%         warning('Failed to add cleaned signals into datastructure: %s',err.message);
-%     end
 end
 
 % add red channel information (if it exists)
@@ -173,23 +197,26 @@ if isfield(db0,'expred') && ~isempty(db0(1).expred)
     fprintf('\n-------- adding red channel (%s) ----------\n\n',char(datetime('now')));
     
     ops0.nchannels_red = db0(1).nchannels_red;
-    
-    %run_REDaddon(1, db0, ops0) ; % create redcell array
-    
-    ops1 = build_ops3(db(1), ops0);
-    
-    % custom function to u
-    mimgR = klab_red_channel_mean(ops1);
-    add_red_channel(ops1, mimgR, []);
-    
-    iexp=1;
-    DetectRedCells; % fills dat.cl.redcell and dat.cl.notred
+            
+    if cfg.use_cluster_computing
+        
+        DetectRedCells_cluster(db(1),ops0); % fills dat.cl.redcell and dat.cl.notred
+        
+    else        
+                      
+        DetectRedCells(db(1),ops0); % fills dat.cl.redcell and dat.cl.notred
+        
+    end
 end
 
-save([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat'],'cfg');
+save(cfg.CONFIGFILE,'cfg');
 
 try
-    create_diagnostic_figures(ops0, db0(1));
+    if cfg.use_cluster_computing
+        create_diagnostic_figures_cluster(ops0, db0(1),cfg);
+    else
+        create_diagnostic_figures(ops0, db0(1));
+    end
 catch err
     warning('Failed to create diagnostic figures!, reason: %s',err.message);
 end
@@ -252,7 +279,11 @@ end
 
 try
     if cfg.write_diagnostic_videos
-        create_diagnostic_movies(ops0, db0(1));
+        if cfg.use_cluster_computing
+            create_diagnostic_movies_cluster(ops0, db0(1),cfg);
+        else
+            create_diagnostic_movies(ops0, db0(1));
+        end
     else
        fprintf('\nSkipping diagnostic videos\n');
     end
@@ -269,6 +300,7 @@ catch err
 end
 
 diary off;
+
 %% STRUCTURE OF RESULTS FILE
 % cell traces are in dat.Fcell
 % neuropil traces are in dat.FcellNeu
@@ -299,3 +331,221 @@ diary off;
 
 end
 
+%% ALL STUFF BELOW ARE ONLY FOR CLUSTER COMPUTING (writing and submitting jobs)
+
+function create_diagnostic_movies_cluster(ops0,db,cfg)
+
+db_FILE = [cfg.JOBDIR,filesep,'db_file.mat'];
+ops_FILE = [cfg.JOBDIR,filesep,'ops_file.mat'];
+
+save(db_FILE,'db');
+save(ops_FILE,'ops0');
+
+CONFIGFILES = cfg.CONFIGFILE;
+
+JOBDIR = cfg.JOBDIR;
+
+%%----
+
+JOBNAME_PREFIX = 'job_output_diagmovies_file';
+
+filename = fullfile(JOBDIR,[JOBNAME_PREFIX,'.pbs']);
+
+dlmwrite(filename, '#!/bin/bash', '');
+dlmwrite(filename, '#PBS -S /bin/bash','-append','delimiter','');
+dlmwrite(filename, '#PBS -j oe','-append','delimiter','');
+dlmwrite(filename, ['#PBS -o ',JOBDIR,filesep,JOBNAME_PREFIX,'.out'],'-append','delimiter','');
+dlmwrite(filename, '#PBS -m n','-append','delimiter','');
+dlmwrite(filename, '#PBS -l nodes=1:ppn=1,mem=18gb','-append','delimiter','');
+dlmwrite(filename, '#PBS -l walltime=1:30:00','-append','delimiter','');
+dlmwrite(filename, '#PBS -q default','-append','delimiter','');
+dlmwrite(filename, 'hostname','-append','delimiter','');
+dlmwrite(filename, 'echo "job starting"','-append','delimiter','');
+dlmwrite(filename, 'module load matlab-8.6','-append','delimiter','');
+dlmwrite(filename, ['cd ',cfg.programpath],'-append','delimiter','');
+dlmwrite(filename, 'echo "RUNNING MATLAB"','-append','delimiter','');
+dlmwrite(filename, sprintf('matlab -nosplash -nodisplay -nodesktop -r "add_suite2p_paths;create_diagnostic_movies(''%s'',''%s'',''%s'');exit;"',ops_FILE,db_FILE,CONFIGFILES),'-append','delimiter','');
+dlmwrite(filename, 'module unload matlab-8.6','-append','delimiter','');
+dlmwrite(filename, 'echo "job finished"','-append','delimiter','');
+[notused,jobname{1}] = system(['qsub ' filename]);
+
+outfiles_stage1{1} = [JOBDIR,filesep,JOBNAME_PREFIX,'.out'];
+jobfiles_stage1{1} = filename;
+
+fprintf('\nWaiting for job to finish (diagnostic movies)\n')
+wait_for_jobs(CONFIGFILES,6,outfiles_stage1,jobfiles_stage1,jobname);
+
+%create_diagnostic_movies(ops_FILE,db_FILE,CONFIGFILES);
+
+end
+
+function create_diagnostic_figures_cluster(ops0,db,cfg)
+
+db_FILE = [cfg.JOBDIR,filesep,'db_file.mat'];
+ops_FILE = [cfg.JOBDIR,filesep,'ops_file.mat'];
+
+save(db_FILE,'db');
+save(ops_FILE,'ops0');
+
+CONFIGFILES = cfg.CONFIGFILE;
+
+JOBDIR = cfg.JOBDIR;
+
+%%----
+
+JOBNAME_PREFIX = 'job_output_diagfigures_file';
+
+filename = fullfile(JOBDIR,[JOBNAME_PREFIX,'.pbs']);
+
+dlmwrite(filename, '#!/bin/bash', '');
+dlmwrite(filename, '#PBS -S /bin/bash','-append','delimiter','');
+dlmwrite(filename, '#PBS -j oe','-append','delimiter','');
+dlmwrite(filename, ['#PBS -o ',JOBDIR,filesep,JOBNAME_PREFIX,'.out'],'-append','delimiter','');
+dlmwrite(filename, '#PBS -m n','-append','delimiter','');
+dlmwrite(filename, '#PBS -l nodes=1:ppn=1,mem=16gb','-append','delimiter','');
+dlmwrite(filename, '#PBS -l walltime=0:40:00','-append','delimiter','');
+dlmwrite(filename, '#PBS -q default','-append','delimiter','');
+dlmwrite(filename, 'hostname','-append','delimiter','');
+dlmwrite(filename, 'echo "job starting"','-append','delimiter','');
+dlmwrite(filename, 'module load matlab-8.6','-append','delimiter','');
+dlmwrite(filename, ['cd ',cfg.programpath],'-append','delimiter','');
+dlmwrite(filename, 'echo "RUNNING MATLAB"','-append','delimiter','');
+dlmwrite(filename, sprintf('matlab -nosplash -nodisplay -nodesktop -r "add_suite2p_paths;create_diagnostic_figures(''%s'',''%s'',''%s'');exit;"',ops_FILE,db_FILE,CONFIGFILES),'-append','delimiter','');
+dlmwrite(filename, 'module unload matlab-8.6','-append','delimiter','');
+dlmwrite(filename, 'echo "job finished"','-append','delimiter','');
+[notused,jobname{1}] = system(['qsub ' filename]);
+
+outfiles_stage1{1} = [JOBDIR,filesep,JOBNAME_PREFIX,'.out'];
+jobfiles_stage1{1} = filename;
+
+fprintf('\nWaiting for job to finish (diagnostic figures)\n')
+wait_for_jobs(CONFIGFILES,5,outfiles_stage1,jobfiles_stage1,jobname);
+
+%create_diagnostic_figures(ops_FILE,db_FILE,CONFIGFILES);
+
+end
+
+function DetectRedCells_cluster(db, ops0,cfg)
+
+db_FILE = [cfg.JOBDIR,filesep,'db_file.mat'];
+ops_FILE = [cfg.JOBDIR,filesep,'ops_file.mat'];
+
+save(db_FILE,'db');
+save(ops_FILE,'ops0');
+
+CONFIGFILES = cfg.CONFIGFILE;
+
+JOBDIR = cfg.JOBDIR;
+
+%%----
+
+JOBNAME_PREFIX = 'job_output_redcell_file';
+
+filename = fullfile(JOBDIR,[JOBNAME_PREFIX,'.pbs']);
+
+dlmwrite(filename, '#!/bin/bash', '');
+dlmwrite(filename, '#PBS -S /bin/bash','-append','delimiter','');
+dlmwrite(filename, '#PBS -j oe','-append','delimiter','');
+dlmwrite(filename, ['#PBS -o ',JOBDIR,filesep,JOBNAME_PREFIX,'.out'],'-append','delimiter','');
+dlmwrite(filename, '#PBS -m n','-append','delimiter','');
+dlmwrite(filename, '#PBS -l nodes=1:ppn=1,mem=20gb','-append','delimiter','');
+dlmwrite(filename, '#PBS -l walltime=0:40:00','-append','delimiter','');
+dlmwrite(filename, '#PBS -q default','-append','delimiter','');
+dlmwrite(filename, 'hostname','-append','delimiter','');
+dlmwrite(filename, 'echo "job starting"','-append','delimiter','');
+dlmwrite(filename, 'module load matlab-8.6','-append','delimiter','');
+dlmwrite(filename, ['cd ',cfg.programpath],'-append','delimiter','');
+dlmwrite(filename, 'echo "RUNNING MATLAB"','-append','delimiter','');
+dlmwrite(filename, sprintf('matlab -nosplash -nodisplay -nodesktop -r "add_suite2p_paths;DetectRedCells(''%s'',''%s'',''%s'');exit;"',db_FILE,ops_FILE,CONFIGFILES),'-append','delimiter','');
+dlmwrite(filename, 'module unload matlab-8.6','-append','delimiter','');
+dlmwrite(filename, 'echo "job finished"','-append','delimiter','');
+[notused,jobname{1}] = system(['qsub ' filename]);
+
+outfiles_stage1{1} = [JOBDIR,filesep,JOBNAME_PREFIX,'.out'];
+jobfiles_stage1{1} = filename;
+
+fprintf('\nWaiting for job to finish (red cells)\n')
+wait_for_jobs(CONFIGFILES,4,outfiles_stage1,jobfiles_stage1,jobname);
+
+%DetectRedCells(db_FILE,ops_FILE,CONFIGFILES);
+
+end
+
+
+function run_pipeline_cluster(db, ops0,cfg)
+
+db_FILE = [cfg.JOBDIR,filesep,'db_file.mat'];
+ops_FILE = [cfg.JOBDIR,filesep,'ops_file.mat'];
+
+save(db_FILE,'db');
+save(ops_FILE,'ops0');
+
+CONFIGFILES = cfg.CONFIGFILE;
+
+JOBDIR = cfg.JOBDIR;
+
+%%----
+
+JOBNAME_PREFIX = 'job_output_pipeline_file';
+
+filename = fullfile(JOBDIR,[JOBNAME_PREFIX,'.pbs']);
+
+dlmwrite(filename, '#!/bin/bash', '');
+dlmwrite(filename, '#PBS -S /bin/bash','-append','delimiter','');
+dlmwrite(filename, '#PBS -j oe','-append','delimiter','');
+dlmwrite(filename, ['#PBS -o ',JOBDIR,filesep,JOBNAME_PREFIX,'.out'],'-append','delimiter','');
+dlmwrite(filename, '#PBS -m n','-append','delimiter','');
+dlmwrite(filename, '#PBS -l nodes=1:ppn=1,mem=26gb','-append','delimiter','');
+dlmwrite(filename, '#PBS -l walltime=4:00:00','-append','delimiter','');
+dlmwrite(filename, '#PBS -q default','-append','delimiter','');
+dlmwrite(filename, 'hostname','-append','delimiter','');
+dlmwrite(filename, 'echo "job starting"','-append','delimiter','');
+dlmwrite(filename, 'module load matlab-8.6','-append','delimiter','');
+dlmwrite(filename, ['cd ',cfg.programpath],'-append','delimiter','');
+dlmwrite(filename, 'echo "RUNNING MATLAB"','-append','delimiter','');
+dlmwrite(filename, sprintf('matlab -nosplash -nodisplay -nodesktop -r "add_suite2p_paths;run_pipeline(''%s'',''%s'',''%s'');exit;"',db_FILE,ops_FILE,CONFIGFILES),'-append','delimiter','');
+dlmwrite(filename, 'module unload matlab-8.6','-append','delimiter','');
+dlmwrite(filename, 'echo "job finished"','-append','delimiter','');
+[notused,jobname{1}] = system(['qsub ' filename]);
+
+outfiles_stage1{1} = [JOBDIR,filesep,JOBNAME_PREFIX,'.out'];
+jobfiles_stage1{1} = filename;
+
+fprintf('\nWaiting for job to finish (main pipeline)\n')
+wait_for_jobs(CONFIGFILES,2,outfiles_stage1,jobfiles_stage1,jobname);
+
+%run_pipeline(db_FILE,ops_FILE,CONFIGFILES);
+
+%%------
+
+JOBNAME_PREFIX = 'job_output_deconv_file';
+
+filename = fullfile(JOBDIR,[JOBNAME_PREFIX,'.pbs']);
+
+dlmwrite(filename, '#!/bin/bash', '');
+dlmwrite(filename, '#PBS -S /bin/bash','-append','delimiter','');
+dlmwrite(filename, '#PBS -j oe','-append','delimiter','');
+dlmwrite(filename, ['#PBS -o ',JOBDIR,filesep,JOBNAME_PREFIX,'.out'],'-append','delimiter','');
+dlmwrite(filename, '#PBS -m n','-append','delimiter','');
+dlmwrite(filename, '#PBS -l nodes=1:ppn=1,mem=20gb','-append','delimiter','');
+dlmwrite(filename, '#PBS -l walltime=1:00:00','-append','delimiter','');
+dlmwrite(filename, '#PBS -q default','-append','delimiter','');
+dlmwrite(filename, 'hostname','-append','delimiter','');
+dlmwrite(filename, 'echo "job starting"','-append','delimiter','');
+dlmwrite(filename, 'module load matlab-8.6','-append','delimiter','');
+dlmwrite(filename, ['cd ',cfg.programpath],'-append','delimiter','');
+dlmwrite(filename, 'echo "RUNNING MATLAB"','-append','delimiter','');
+dlmwrite(filename, sprintf('matlab -nosplash -nodisplay -nodesktop -r "add_suite2p_paths;add_deconvolution(''%s'',''%s'',''%s'');exit;"',ops_FILE,db_FILE,CONFIGFILES),'-append','delimiter','');
+dlmwrite(filename, 'module unload matlab-8.6','-append','delimiter','');
+dlmwrite(filename, 'echo "job finished"','-append','delimiter','');
+[notused,jobname{1}] = system(['qsub ' filename]);
+
+outfiles_stage2{1} = [JOBDIR,filesep,JOBNAME_PREFIX,'.out'];
+jobfiles_stage2{1} = filename;
+
+fprintf('\nWaiting for job to finish (deconvolution)\n')
+wait_for_jobs(CONFIGFILES,3,outfiles_stage2,jobfiles_stage2,jobname);
+
+%add_deconvolution(ops_FILE,db_FILE,CONFIGFILES);
+
+end
