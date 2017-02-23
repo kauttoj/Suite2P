@@ -1,5 +1,6 @@
 fprintf('\nStarting Suite2P GUI\n');
 
-addpath(genpath(mfilename('fullpath')));
+add_suite2p_paths;
+%addpath(genpath(mfilename('fullpath')));
 
-run(['new_main.m']);
+run('new_main.m');

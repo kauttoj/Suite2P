@@ -5,13 +5,22 @@ if ischar(db) && ischar(ops0)
     load(ops0);
 end
 
-BATCH_SIZE = 500; % how many frames to read at once
+CUT_PERCENTAGE = 0.75;
 
 ops = build_ops3(db, ops0);
 
 fregops =  sprintf('regops_%s_%s.mat', ops.mouse_name, ops.date);
 ops1 = load(fullfile(ops.RegFileRoot, fregops));
 ops1 = ops1.ops1;
+
+frame_limits = [0,cumsum(ops1{1}.Nframes)]; 
+frame_counts = ops1{1}.Nframes;
+files_to_process = 1:length(frame_counts);
+if nargin==3
+   A=load(cfg);
+   files_to_process = A.cfg.files_to_process;
+   A=[];
+end   
 
 fold_root = [ops.klab_info.outpath,filesep,'diagnostics'];
 if ~exist(fold_root,'dir')
@@ -25,60 +34,62 @@ end
 
 tic;
 
+map = linspace(0,1,2^12);                
+
 fprintf('\n\n--- Creating diagnostic movies (total %i)\n\n',numel(ops1));
 
-parfor file = 1:numel(ops1)
+for plane = 1:numel(ops1)
     
-    fprintf('..making video for plane %i\n',file);
+    fprintf('..making video for plane %i\n',plane);
     
-    ops = ops1{file};
-       
-    ops.iplane  = file;
+    ops = ops1{plane};
+    
+    ops.iplane  = plane;
     [Ly, Lx] = size(ops.mimg);
     
-    fid = fopen(ops.RegFile, 'r');
-    
-    fprintf('... %i blocks (files) and %i frames\n',length(ops.Nframes),sum(ops.Nframes));
-    
-    outfile = [fold,filesep,sprintf('aligned_data_plane%i_%s',file,ops.klab_info.experiment_ID)];
-       
-    limits = get_color_limits(fid,sum(ops.Nframes),300,Ly*Lx); % estimate intensity limits from 300 frames
-    
-    fprintf('... setting intensity limits to %i - %i\n',limits(1),limits(2));
-    
-    map = linspace(0,1,2^12);
-        
-    try
-        writerObj = VideoWriter([outfile,'.m4v'],'MPEG-4');
-        writerObj.Quality = 95;
-    catch err
-        writerObj = VideoWriter([outfile,'.avi'],'Motion JPEG AVI');
-    end
-    
-    writerObj.FrameRate = 30;
-    open(writerObj);
-    
-    frewind(fid);
-                
     inds = cell(1,3);
     f = zeros(Ly,Lx,3);
-    for j=1:3    
+    for j=1:3
         f(:,:,j)=j;
         inds{j} = find(f==j);
     end
     ind = inds{1};
     
-    while 1
+    fid = fopen(ops.RegFile, 'r');
+    
+    for block = files_to_process
         
-        data = fread(fid,  Ly*Lx*BATCH_SIZE, '*uint16');
+        [~,str]=fileparts(ops.klab_info.sbxfiles{block});
+        
+        fprintf('... block %i with %i frames\n',block,frame_counts(block));
+        
+        outfile = [fold,filesep,sprintf('aligned_data_plane%i_%s',plane,str)];
+        
+        fseek(fid,Ly*Lx*frame_limits(block),'bof');
+        limits = get_color_limits(fid,frame_limits(block)+1,frame_counts(block),200,Ly*Lx); % estimate intensity limits from 300 frames
+        
+        fprintf('... intensity limits are [%i,%i] (cutted to [%i,%i])\n',limits(1),limits(2),limits(1),round(limits(1)+range(limits)*CUT_PERCENTAGE));        
+        
+        fseek(fid,Ly*Lx*frame_limits(block),'bof');
+        data = fread(fid,Ly*Lx*frame_counts(block), '*uint16');
+        data = single(reshape(data,Ly,Lx,[]));
         
         if isempty(data)
-           break; 
+            warning('Data for block %i was empty!',block);
+            continue;
         end
         
-        data = double(reshape(data,Ly,Lx,[]));
+        try
+            writerObj = VideoWriter([outfile,'.m4v'],'MPEG-4');
+            writerObj.Quality = 95;
+        catch err
+            writerObj = VideoWriter([outfile,'.avi'],'Motion JPEG AVI');
+        end
         
-        for j=1:size(data,3)  
+        writerObj.FrameRate = 30;
+        open(writerObj);                
+        
+        for j=1:size(data,3)
             data(:,:,j) = medfilt2(data(:,:,j), [2,2]);
         end
         
@@ -86,26 +97,29 @@ parfor file = 1:numel(ops1)
         data(data>limits(2))=limits(2);
         data = data - min(data(:)) + 1e-4;
         data =data/(max(data(:)));
-        data(data>0.50)=0.5 - 1e-4;
-        data = 2*data;
+        data(data>CUT_PERCENTAGE)=CUT_PERCENTAGE - 1e-4;
+        data = data/CUT_PERCENTAGE;
         data = floor((length(map)-2)*data)+1;
         
         data(data>length(map))=length(map);
         data(data<1)=1;
         
-        for j=1:size(data,3)                   
+        for j=1:size(data,3)
             a = data(:,:,j);
             f(inds{1}) = map(a(ind));
             f(inds{2}) = map(a(ind));
             f(inds{3}) = map(a(ind));
             frame = im2frame(f);
-            writeVideo(writerObj,frame);     
-        end        
+            writeVideo(writerObj,frame);
+        end
+        
+        data = [];
+        
+        close(writerObj);                
         
     end
     
-    close(writerObj);
-    fclose(fid);    
+    fclose(fid);
     
 end
 
@@ -119,9 +133,9 @@ end
 
 end
 
-function limits = get_color_limits(fid,frames,steps,S)
+function limits = get_color_limits(fid,startind,frames,steps,S)
 
-pos = round(linspace(1,frames,min(frames,steps+3)));
+pos = round(linspace(startind,startind+frames,min(frames,steps+3)));
 
 pos = pos(2:(end-1));
 mi=0;
@@ -130,8 +144,8 @@ ma=0;
 for i=1:length(pos)
    fseek(fid,S*(pos(i)-1),'bof');
    data = single(fread(fid,S,'*uint16'));
-   mi = mi + prctile(data(:),2.5)/length(pos);
-   ma = ma + prctile(data(:),97.5)/length(pos);
+   mi = mi + prctile(data(:),1)/length(pos);
+   ma = ma + prctile(data(:),99)/length(pos);
 end
 
 limits = [ceil(mi),floor(ma)];

@@ -55,9 +55,9 @@ else
     disp('already registered binary found');
 end
 
-if ops.fix_baseline && processed==0
+if processed==0
     
-    fprintf('\n--- Starting file-wise normalization fix ---\n\n')
+    fprintf('\n--- Computing stats ---\n\n')
     
     for i = 1:numel(ops1)
         
@@ -75,8 +75,7 @@ if ops.fix_baseline && processed==0
         
         fprintf('plane %i with %i blocks and %i frames\n',i,length(ops.Nframes),sum(ops.Nframes));
         
-        fprintf(' computing mean...\n');
-        for block = 1:length(ops.Nframes);            
+        for block = 1:length(ops.Nframes);
             data = fread(fid,  Ly*Lx*ops.Nframes(block), '*uint16');
             data = single(reshape(data, Ly, Lx, []));
             %
@@ -96,11 +95,11 @@ if ops.fix_baseline && processed==0
             % Sum up non-NaNs, and divide by the number of non-NaNs.
             m = sum(data,3)./n;
             count_images(:,:,block)  = n;
-            mean_images(:,:,block) = m;            
-            corr_images(:,:,block) = correlation_image(data,12,Ly,Lx);                       
+            mean_images(:,:,block) = m;
+            corr_images(:,:,block) = correlation_image(data,12,Ly,Lx);
         end
         data=[];
-                
+        
         background = 0;
         corrmap = 0;
         coef = sum(count_images,3);
@@ -112,72 +111,79 @@ if ops.fix_baseline && processed==0
         corr_images=[];
         
         if nnz(isnan(background))>0
-           warning('Background has %i NaN''s !!!!',nnz(isnan(background)));
+            warning('Background has %i NaN''s !!!!',nnz(isnan(background)));
         end
         
-        mimg1 = zeros(Ly,Lx);
-       % tempfile = [ops.RegFile(1:end-4),'_TEMP.bin'];
-        %fid_new = fopen(tempfile, 'w');
-        frewind(fid);
-        
-        fprintf(' rescaling with common mean...\n');
-        median_multip = nan(length(ops.Nframes),3);
-        for block = 1:length(ops.Nframes)
+        if ops.fix_baseline
             
-            pos = ftell(fid);
-            data = fread(fid,  Ly*Lx*ops.Nframes(block), '*uint16');
-            data = single(reshape(data, Ly, Lx, []));
+            fprintf('...doing pixel-wise data normalization (optional)\n')
             
-            multimat = background./mean_images(:,:,block);
-            data = bsxfun(@times,data,multimat);
-            median_multip(block,1) = median(multimat(:));
-            median_multip(block,2) = prctile(multimat(:),2.5);
-            median_multip(block,3) = prctile(multimat(:),97.5);
+            mimg1 = zeros(Ly,Lx);
+            % tempfile = [ops.RegFile(1:end-4),'_TEMP.bin'];
+            %fid_new = fopen(tempfile, 'w');
+            frewind(fid);
+            
+            median_multip = nan(length(ops.Nframes),3);
+            for block = 1:length(ops.Nframes)
+                
+                pos = ftell(fid);
+                data = fread(fid,  Ly*Lx*ops.Nframes(block), '*uint16');
+                data = single(reshape(data, Ly, Lx, []));
+                
+                multimat = background./mean_images(:,:,block);
+                data = bsxfun(@times,data,multimat);
+                median_multip(block,1) = median(multimat(:));
+                median_multip(block,2) = prctile(multimat(:),2.5);
+                median_multip(block,3) = prctile(multimat(:),97.5);
+                
+                if ops.fix_baseline==2
+                    fprintf('...running mean detrend removal (block %i)\n',block);
+                    data = klab_detrend(data,ops.imageRate,ops.detrend_window,'MEAN');
+                end
+                %data = data + shift_levels(block);
+                
+                data = max(data,0);
+                if nnz(data>MAXINT)>0
+                    warning('Total %i pixels are over uint16 limit after level fix (binary %s, block %i) !!!',nnz(data>MAXINT),ops.RegFile,block);
+                end
+                
+                mimg1 = mimg1 + sum(data,3);
+                
+                %count = fwrite(fid_new,uint16(data),'*uint16');
+                fseek(fid,pos,'bof');
+                count = fwrite(fid,uint16(data),'*uint16');
+                
+                if count ~= Ly*Lx*ops.Nframes(block)
+                    error('Number of written elements mismatch! (BUG)');
+                end
+                
+            end
 
-            if ops.fix_baseline==2
-                fprintf('...running mean detrend removal (block %i)\n',block);
-                data = klab_detrend(data,ops.imageRate,ops.detrend_window,'MEAN');
-            end
-            %data = data + shift_levels(block);
+            data=[];
+            mean_images=[];
             
-            data = max(data,0);
-            if nnz(data>MAXINT)>0
-                warning('Total %i pixels are over uint16 limit after level fix (binary %s, block %i) !!!',nnz(data>MAXINT),ops.RegFile,block);
-            end
+            ops.mimg1 = mimg1/sum(ops.Nframes);
+            ops.median_multip = median_multip;
             
-            mimg1 = mimg1 + sum(data,3);
-                        
-            %count = fwrite(fid_new,uint16(data),'*uint16');
-            fseek(fid,pos,'bof');
-            count = fwrite(fid,uint16(data),'*uint16');
-            
-            if count ~= Ly*Lx*ops.Nframes(block)
-                error('Number of written elements mismatch! (BUG)');
+            fprintf('level-fix multipliers for plane %i:\n',ops.iplane);
+            for block = 1:length(ops.Nframes)
+                fprintf(' median %3.2f, 95%% interval %3.2f - %3.2f (file %i with %i frames)\n',median_multip(block,1),median_multip(block,2),median_multip(block,3),block,ops.Nframes(block));
             end
+            fprintf('\n');
             
         end
-        data=[];
-        mean_images=[];
-        
-        ops.mimg1 = mimg1/sum(ops.Nframes);
-        
-        fprintf('level-fix multipliers for plane %i:\n',ops.iplane);
-        for block = 1:length(ops.Nframes)
-            fprintf(' median %3.2f, 95%% interval %3.2f - %3.2f (file %i with %i frames)\n',median_multip(block,1),median_multip(block,2),median_multip(block,3),block,ops.Nframes(block));
-        end
-        fprintf('\n');
-        
-        fclose(fid);     
+               
+        fclose(fid);
         
         ops.common_mean = background;
         ops.common_corrmap = corrmap;
-        ops.median_multip = median_multip;
-        
+                
         ops1{i} = ops;
-                       
-    end    
+        
+    end
+        
+    fprintf('\n--- Finished, continuing with ROI detection ---\n\n')
     
-    fprintf('--- signal normalization finished ---\n\n')
 end
 
 %%
