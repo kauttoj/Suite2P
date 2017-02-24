@@ -6,6 +6,8 @@ function data = readBin(regopsfile,frame_start,framecount,plane)
 % framecount = how many frame to return starting from frame_start
 % plane = which plane to read (default = 1)
 
+% Note: uint16 data type is assumed (2 bytes)!!
+
 if nargin<4
     plane = 1;
 end
@@ -16,6 +18,8 @@ if isempty(path)
    path = pwd; 
 end
 data = [];
+
+fclose('all');
 
 try
     cd(path);
@@ -43,8 +47,8 @@ try
     fid = fopen([binfile,id]);
     try
         fprintf('--- reading frames %i to %i from plane %i...',frame_start,frame_start+framecount-1,plane);
-        fseek(fid,Ly*Lx*frame_start,'bof');
-        data = fread(fid,Ly*Lx*framecount, '*uint16');
+        fseek(fid,Ly*Lx*frame_start*2,'bof');
+        data = single(fread(fid,Ly*Lx*framecount, '*uint16'));
         data = reshape(data, Ly, Lx, []);
         fprintf('success!\n');
     catch err1

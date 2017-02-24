@@ -65,12 +65,12 @@ for plane = 1:numel(ops1)
         
         outfile = [fold,filesep,sprintf('aligned_data_plane%i_%s',plane,str)];
         
-        fseek(fid,Ly*Lx*frame_limits(block),'bof');
+        fseek(fid,Ly*Lx*frame_limits(block)*2,'bof');
         limits = get_color_limits(fid,frame_limits(block)+1,frame_counts(block),200,Ly*Lx); % estimate intensity limits from 300 frames
         
         fprintf('... intensity limits are [%i,%i] (cutted to [%i,%i])\n',limits(1),limits(2),limits(1),round(limits(1)+range(limits)*CUT_PERCENTAGE));        
         
-        fseek(fid,Ly*Lx*frame_limits(block),'bof');
+        fseek(fid,Ly*Lx*frame_limits(block)*2,'bof');
         data = fread(fid,Ly*Lx*frame_counts(block), '*uint16');
         data = single(reshape(data,Ly,Lx,[]));
         
@@ -142,7 +142,7 @@ mi=0;
 ma=0;
 
 for i=1:length(pos)
-   fseek(fid,S*(pos(i)-1),'bof');
+   fseek(fid,2*S*(pos(i)-1),'bof');
    data = single(fread(fid,S,'*uint16'));
    mi = mi + prctile(data(:),1)/length(pos);
    ma = ma + prctile(data(:),99)/length(pos);
