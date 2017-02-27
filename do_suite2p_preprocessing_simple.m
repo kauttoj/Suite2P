@@ -12,7 +12,6 @@ cfg.image_FOV = [40,720,8,512]; 	% [left,right,up,down]
 cfg.grating_size = [0,0]; 			% [left,right] in pixels AFTER cropping operation with selected FOV (interpolation to remove empty lines)
 cfg.cell_diameter = 14; 			% in pixels! (14 is optimal for WAVE stuff)
 %cfg.framerate = 15.4883;   		% acquisition! Automatically converted for planes. Keep empty to read from SBX files (recommended).
-cfg.tempdata_folder = []; 			% if 0, using system tempdir()
 cfg.delete_raw_tiffs = 1; 			% if 1, all raw tiffs are kept
 cfg.write_aligned_tiffs = 0; 		% if 1, all final tiffs are saved (.bin is kept anyway)
 cfg.write_diagnostic_videos = 0; 	% make video of aligned data (NOT YET WORKING!)

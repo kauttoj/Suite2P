@@ -16,9 +16,7 @@ if ~exist(cfg.outpath,'dir')
     end
 end
 
-if isempty(cfg.tempdata_folder)
-    cfg.tempdata_folder = [cfg.outpath,filesep,'raw_data'];
-end
+cfg.tempdata_folder = [cfg.outpath,filesep,'raw_data'];
 
 diary off
 pause(2); % allow some time to write buffer
@@ -45,24 +43,39 @@ if ~isfield(cfg,'num_cores')
     cfg.num_cores=[];
 end
 
+if ~isfield(cfg,'tempfile_folder') || ( isfield(cfg,'tempfile_folder') && isempty(cfg.tempfolder) )
+    cfg.tempfile_folder = [cfg.tempdata_folder,filesep];
+end
+
 cfg.mouse_name = cfg.experiment_ID; % subfolder, level1
 cfg.date = 'suite2p'; % subfolder, level 2
 cfg.processing_stage = 0;
 
 if ~isfield(cfg,'use_cluster_computing')
-   cfg.use_cluster_computing = 1;
+    cfg.use_cluster_computing = 1;
 end
-    
+
 if cfg.use_cluster_computing
     fprintf('\nNote: Pipeline is running in CLUSTER mode using PBS scheduler (not for desktop use!)\n\n');
-    JOBDIR = [cfg.outpath,filesep,'job_scripts'];
+    
+    JOBDIR = [cfg.outpath,filesep,'jobfiles'];
     if ~exist(JOBDIR,'dir')
-        mkdir(JOBDIR);        
+        mkdir(JOBDIR);
+    else
+        for i=1:20
+            JOBDIR = [cfg.outpath,filesep,'jobfiles',num2str(i)];
+            if ~exist(JOBDIR,'dir')
+                mkdir(JOBDIR);
+                break;
+            end
+        end
+        if i==20
+            error('you already have 20 job folders!')
+        end
     end
-    if ~exist(JOBDIR,'dir')
-       error('Could not create/find job file directory %s!',JOBDIR);
-    end
+    
     cfg.JOBDIR = JOBDIR;
+    
 else
     klab_createpool(cfg.num_cores);
 end
@@ -129,7 +142,7 @@ ops0.fig                    = 0; % turn off figure generation with 0
 
 % root paths for files and temporary storage (ideally an SSD drive. my SSD is C:/)
 ops0.RootStorage            = cfg.tempdata_folder; % Suite2P assumes a folder structure, check out README file
-ops0.temp_tiff              = [tempdir,filesep,'suite2p_tempfile.tiff']; % copies each remote tiff locally first, into this file
+ops0.temp_tiff              = [cfg.tempfile_folder,'suite2p_tempfile.tiff']; % copies each remote tiff locally first, into this file
 ops0.RegFileRoot            = cfg.outpath;  % location for binary file
 ops0.DeleteBin              = 0; % set to 1 for batch processing on a limited hard drive
 ops0.ResultsSavePath        = cfg.outpath; % a folder structure is created inside
@@ -355,14 +368,11 @@ end
 N_files = length(cfg.sbxfiles);
 
 for i = 1:N_files
-    CONFIGFILES{i} = [JOBDIR,filesep,cfg.experiment_ID,'_CONFIGFILE_file',num2str(i)];
+    CONFIGFILES{i} = [JOBDIR,filesep,cfg.experiment_ID,'_CONFIGFILE_file',num2str(i),'.mat'];
     cfg.files_to_process = i;
     save(CONFIGFILES{i},'cfg');
 end
 
-outfiles_stage1 = [];
-jobfiles_stage1 = [];
-jobname = [];
 
 for i = 1:N_files
         
@@ -515,7 +525,7 @@ dlmwrite(filename, '#PBS -j oe','-append','delimiter','');
 dlmwrite(filename, ['#PBS -o ',JOBDIR,filesep,JOBNAME_PREFIX,'.out'],'-append','delimiter','');
 dlmwrite(filename, '#PBS -m n','-append','delimiter','');
 dlmwrite(filename, '#PBS -l nodes=1:ppn=1,mem=26gb','-append','delimiter','');
-dlmwrite(filename, '#PBS -l walltime=4:00:00','-append','delimiter','');
+dlmwrite(filename, '#PBS -l walltime=5:00:00','-append','delimiter','');
 dlmwrite(filename, '#PBS -q default','-append','delimiter','');
 dlmwrite(filename, 'hostname','-append','delimiter','');
 dlmwrite(filename, 'echo "job starting"','-append','delimiter','');

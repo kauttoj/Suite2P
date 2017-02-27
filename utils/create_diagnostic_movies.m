@@ -1,4 +1,4 @@
-function create_diagnostic_movies(ops0, db,cfg)
+function create_diagnostic_movies(ops0, db,cfg_file)
 
 if ischar(db) && ischar(ops0)
     load(db);
@@ -17,7 +17,7 @@ frame_limits = [0,cumsum(ops1{1}.Nframes)];
 frame_counts = ops1{1}.Nframes;
 files_to_process = 1:length(frame_counts);
 if nargin==3
-   A=load(cfg);
+   A=load(cfg_file);
    files_to_process = A.cfg.files_to_process;
    A=[];
 end   
@@ -123,13 +123,13 @@ for plane = 1:numel(ops1)
     
 end
 
-fprintf('all done (took %is)\n\n',round(toc));
-
 if nargin==3
-    load(cfg);    
+    load(cfg_file);    
     cfg.processing_stage = 6;
-    save(cfg.CONFIGFILE,'cfg');
+    save(cfg_file,'cfg');
 end
+
+fprintf('all done (took %is)\n\n',round(toc));
 
 end
 
