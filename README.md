@@ -1,4 +1,8 @@
-﻿UPDATE (Christmas 2016): number of clusters determined automatically, but do specify the "diameter" of an average cell for best results. You can do this with
+This fork is a heavily customized version of the original code to process data collected with Scanbox 2p microscope.
+
+-----------------------
+
+UPDATE (Christmas 2016): number of clusters determined automatically, but do specify the "diameter" of an average cell for best results. You can do this with
 either db(iexp).diameter or ops.diameter. 
 
 # Suite2p: fast, accurate and complete two-photon pipeline#
