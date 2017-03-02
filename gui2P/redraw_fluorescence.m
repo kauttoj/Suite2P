@@ -15,10 +15,13 @@ end
 F_dff = F - h.dat.stat(ichosen).neuropilCoefficient*Fneu + mean(Fneu);
 
 if h.show_dff==1 && ~isempty(F_dff)    
-    th = prctile(F_dff,80);
-    F0 = mean(F_dff(F_dff<th));
-    F_dff = (F_dff-F0)/F0;
-    
+    for i=1:(length(border)-1)
+        ind = ((border(i)+1):border(i+1));
+        F_temp = F_dff(ind);
+        th = prctile(F_temp,80);
+        F0 = mean(F_temp(F_temp<th));
+        F_dff(ind) = (F_temp-F0)/F0;
+    end
     plot(my_conv_local(medfilt1(double(F_dff), 3), 3))
     ylabel('dF/F0','Fontsize',10);
     axis tight

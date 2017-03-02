@@ -94,7 +94,6 @@ if flag
             rootS2p_PATH=fileparts(which('run_pipeline'));
             run([rootS2p_PATH,filesep,'SHARED_CLASSIFIER_PATHS.m']);
             if exist('CLASSIFIER_DATAFILE','var')
-                h.is_shared_classifier = 0;
                 for i=1:length(CLASSIFIER_DATAFILE)
                     if strcmp(h.dat.cl.fpath,CLASSIFIER_DATAFILE(i).file)
                         h.is_shared_classifier = 1;
@@ -102,9 +101,18 @@ if flag
                     end
                 end
             end
+            h = identify_classifier(h);
             h = classROI(h);
             h.st0(:,1) = [h.dat.stat.iscell]; % do not use classified prediction, use existing
         end
+        h.quadvalue = zeros(3);
+        for j = 1:3
+            for i = 1:3
+                set(h.(sprintf('Q%d%d', j,i)), 'BackgroundColor',[.92 .92 .92]);
+            end
+        end
+        h.dat.ylim = [0 h.dat.cl.Ly];
+        h.dat.xlim = [0 h.dat.cl.Lx];        
         
     else
         h.dat.filename = fullfile(filepath1, filename1);
