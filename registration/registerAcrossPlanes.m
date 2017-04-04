@@ -217,7 +217,7 @@ t2 = 0;
 % if two consecutive files have as many bytes, they have as many frames
 nbytes = 0;
 for k = 1:length(fs)
-    dataPrev = zeros(ops.Ly, ops.Lx, nplanes, 'int16');
+    dataPrev = zeros(ops.Ly, ops.Lx, nplanes, 'uint16');
     iplane0 = 1:1:ops.nplanes;
     t1 = 0;
     for j = 1:length(fs{k})

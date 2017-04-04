@@ -19,6 +19,7 @@ RegFileBinLocation = getOr(ops, {'RegFileBinLocation'}, []);
 targetImage        = getOr(ops, {'targetImage'}, []); % specify experiment to generate target image from (useful if drift) 
 alignTargetImages  = getOr(ops, {'alignTargetImages'}, false); % if true, align target images to each other
 interpolateAcrossPlanes = getOr(ops, {'interpolateAcrossPlanes'}, false); %if true, similar looking planes will be averaged together to generate final movie
+ops.interpolateAcrossPlanes=interpolateAcrossPlanes;
 planesToInterpolate = getOr(ops, {'planesToInterpolate'}, 1:nplanes); % these planes will be considered for interpolation
 alignAcrossPlanes  = getOr(ops, {'alignAcrossPlanes'}, false); % at each time point, frame will be aligned to best matching target image (from different planes)
 
@@ -26,7 +27,6 @@ ops.splitFOV           = getOr(ops, {'splitFOV'}, [1 1]);
 ops.smooth_time_space  = getOr(ops, 'smooth_time_space', []);
 ops.dobidi         = getOr(ops, {'dobidi'}, 1);
 LoadRegMean        = getOr(ops, {'LoadRegMean'}, 0);
-
 
 fs = ops.fsroot;
 
@@ -282,7 +282,7 @@ for i = 1:numel(ops1)
             if p == parts
                 toRead = sum(ops1{i}.Nframes) - 2000 * (parts-1);
             end
-            data = fread(fid{i},  sz*toRead, '*int16');
+            data = fread(fid{i},  sz*toRead, '*uint16');
             fwrite(fidCopy, data, class(data));
         end
         fclose(fidCopy);
@@ -305,7 +305,7 @@ for i = 1:numel(ops1)
                     if p == parts
                         toRead = sum(ops1{i}.Nframes) - 2000 * (parts-1);
                     end
-                    data = fread(fidOrig,  sz*toRead, '*int16');
+                    data = fread(fidOrig,  sz*toRead, '*uint16');
                     fwrite(fidCopy, data, class(data));
                 end
                 fclose(fidCopy);

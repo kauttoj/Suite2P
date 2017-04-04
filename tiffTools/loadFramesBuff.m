@@ -81,7 +81,7 @@ else % if the file is local (and on SSD) this way of reading works much faster
     offset = info(1).Offset;
     w = info(1).Width;
     h = info(1).Height;
-    dataClass = 'int16'; % this is true for our ScanImage recordings, 
+    dataClass = 'uint16'; % this is true for our ScanImage recordings, 
     % it is possible to use info.BitDepth to try and figure out nBytesPerSample
     
     % MK: using memmapfile here, but just reading as a binary file might be
