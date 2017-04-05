@@ -23,6 +23,8 @@ ops.interpolateAcrossPlanes=interpolateAcrossPlanes;
 planesToInterpolate = getOr(ops, {'planesToInterpolate'}, 1:nplanes); % these planes will be considered for interpolation
 alignAcrossPlanes  = getOr(ops, {'alignAcrossPlanes'}, false); % at each time point, frame will be aligned to best matching target image (from different planes)
 
+max_shift_limit = getOr(ops, {'max_shift_limit'},inf);
+
 ops.splitFOV           = getOr(ops, {'splitFOV'}, [1 1]);
 ops.smooth_time_space  = getOr(ops, 'smooth_time_space', []);
 ops.dobidi         = getOr(ops, {'dobidi'}, 1);
@@ -336,9 +338,18 @@ for i = 1:numel(ops1)
         else
             % determine bad frames
             badi                    = getOutliers(ops1{i});
-            ops1{i}.badframes(badi) = true;
+            ops1{i}.badframes(badi) = true;                        
             
-            ds = ops1{i}.DS(~ops1{i}.badframes,:);
+            %%%%% addition
+            total_shift = sqrt(sum(ops1{i}.DS.^2,2));
+            badi_addition = find(total_shift>max_shift_limit);
+            if ~isempty(badi_addition)
+                fprintf('\n   Warning!!! Total %i frames were shifted over %i pixels, setting them as bad!!\n\n',length(badi_addition),max_shift_limit);
+            end
+            ops1{i}.badframes(badi_addition)=true;
+            %%%%%%
+            
+            ds = ops1{i}.DS(~ops1{i}.badframes,:);            
         end
         
         minDs = min(ds, [], 1);
@@ -353,8 +364,10 @@ for i = 1:numel(ops1)
         ops1{i}.yrange = ceil(1 + maxDs(1)) : floor(ops1{i}.Ly+minDs(1));
         ops1{i}.xrange = ceil(1 + maxDs(2)) : floor(ops1{i}.Lx+minDs(2));
     else
+        
         ops1{i}.yrange = 1:Ly;
         ops1{i}.xrange = 1:Lx;
+        
     end  
 end
     

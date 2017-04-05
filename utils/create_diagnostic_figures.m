@@ -83,13 +83,16 @@ for plane = 1:ops.nplanes
         
         mot = ops1.DS(frame_ind,:);
         
+        bad_frames = find(ops1.badframes(frame_ind));
+        
         mult_align(file,1:2) = mean(mot);
                 
         handle = figure('Visible','off','position',[1000,770,680,728],'PaperPositionMode','auto');
         
-        subplot(3,1,1);
-        plot(detrend(mot));
-        legend('Y','X','location','best');
+        subplot(3,1,1);                      
+        plot(mot);hold on;
+        plot(bad_frames,mot(bad_frames,:),'g*');        
+        legend('Y','X','bad','location','best');
         xlabel('Frame');
         ylabel('Shift (pixels)');
         title(titlesrt,'interpreter','none');

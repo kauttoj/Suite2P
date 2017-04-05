@@ -181,6 +181,12 @@ ops0.detrend_window         = 100;   % in secods, 100s = 1/100 = 0.01Hz
 
 cfg.do_deconvolution = 1; % always need run this to get refined neuropil coefficients!
 
+if ~isfield(cfg,'max_shift_limit')
+    ops0.max_shift_limit = inf;
+else
+    ops0.max_shift_limit = cfg.max_shift_limit;   
+end
+    
 % red channel options
 % redratio = red pixels inside / red pixels outside
 % redcell = redratio > mean(redratio) + redthres*std(redratio)
@@ -232,6 +238,11 @@ try
     end
 catch err
     warning('Failed to create diagnostic figures!, reason: %s',err.message);
+end
+
+
+if exist(ops0.temp_tiff,'file')
+    delete(ops0.temp_tiff);
 end
 
 root = [ops0.ResultsSavePath,filesep,db(1).mouse_name,filesep,db(1).date];
