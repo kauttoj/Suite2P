@@ -87,7 +87,7 @@ if flag
     % keyboard;
     if isfield(h.dat, 'dat')
         
-        h.dat = h.dat.dat;
+        h.dat = h.dat.dat;        
         if isfield(h.dat,'classifier_backup')
             h.statLabels = h.dat.classifier_backup.statLabels;
             h.is_shared_classifier = 0;
@@ -102,8 +102,9 @@ if flag
                 end
             end
             h = identify_classifier(h);
-            h = classROI(h);
-            h.st0(:,1) = [h.dat.stat.iscell]; % do not use classified prediction, use existing
+            old_stat = h.dat.stat;
+            h = classROI(h);            
+            h.dat.stat = old_stat;  % do not use classified prediction, use existing          
         end
         h.quadvalue = zeros(3);
         for j = 1:3
