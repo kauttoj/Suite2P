@@ -156,7 +156,11 @@ ops0.fix_baseline 		 = cfg.fix_baseline;
 % registration options
 ops0.doRegistration         = 1; % skip (0) if data is already registered
 ops0.showTargetRegistration = 0; % shows the image targets for all planes to be registered
-ops0.PhaseCorrelation       = 1; % set to 0 for non-whitened cross-correlation
+if ~isfield(cfg,'use_phase_correlation')
+    ops0.PhaseCorrelation       = 1; % set to 0 for non-whitened cross-correlation
+else
+    ops0.PhaseCorrelation       = cfg.use_phase_correlation;
+end
 ops0.SubPixel               = Inf; % 2 is alignment by 0.5 pixel, Inf is the exact number from phase correlation
 ops0.NimgFirstRegistration  = 500; % number of images to include in the first registration pass 
 ops0.nimgbegend             = 250; % frames to average at beginning and end of blocks
@@ -177,15 +181,18 @@ ops0.sensorTau              = 0.4; % decay half-life (or timescale). Approximate
 ops0.maxNeurop              = Inf; % for the neuropil contamination to be less than this (sometimes good, i.e. for interneurons)
 ops0.recomputeKernel        = 1; % whether to re-estimate kernel during optimization (default kernel is "reasonable", if you give good timescales)
 ops0.sameKernel             = 1; % whether the same kernel should be estimated for all neurons (robust, only set to 0 if SNR is high and recordings are long)
-ops0.detrend_window         = 100;   % in secods, 100s = 1/100 = 0.01Hz
+ops0.detrend_window         = 100;   % in secods, 100s <--> 1/100 = 0.01Hz
 
 cfg.do_deconvolution = 1; % always need run this to get refined neuropil coefficients!
 
 if ~isfield(cfg,'max_shift_limit')
     ops0.max_shift_limit = inf;
 else
-    ops0.max_shift_limit = cfg.max_shift_limit;   
+    ops0.max_shift_limit = cfg.max_shift_limit; 
+    fprintf('\nNote: Setting maximum motion correction shift radius to %i pixels\n\n',ops0.max_shift_limit);
 end
+
+
     
 % red channel options
 % redratio = red pixels inside / red pixels outside

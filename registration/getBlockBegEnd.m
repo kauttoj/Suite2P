@@ -14,8 +14,7 @@ for k = 1:length(ops.SubDirs) % loop through all blocks
     data = fread(fid,  Ly*Lx*nfrtoread, '*uint16'); % read exactly this many frames
     data  = reshape(data, Ly, Lx, nfrtoread); % reshape into the image size
     ops.mimg_beg(:,:,k) = mean(data, 3); % average frames
-        
-    
+            
     fseek(fid, offset + bitspersamp/8 * Ly * Lx * (nFramesBlock - nfrtoread), 'bof'); % seek to the end of the block 
     data = fread(fid,  Ly*Lx*nfrtoread, '*uint16'); % same as above
     data  = reshape(data, Ly, Lx, nfrtoread);% same as above
