@@ -22,14 +22,16 @@ cfg.num_cores = 2;				% set maximum number of cores to use (reduce if memory run
 cfg.use_cluster_computing = 0; % use 1 only with CNBC cluster
 
 % If you notice spurious motion correction spikes (say >30 pixels), use these options
-%cfg.max_shift_limit = 30;      % max total shift in PIXELS, all above this are omitted. Does not currently work with non-ridig registration (disabled by authors).
+cfg.max_shift_limit = 6;      % max total shift in PIXELS, all above this are omitted. Does not currently work with non-ridig registration (disabled by authors).
 %cfg.use_phase_correlation = 1; % default is 1, but you can try 0 for classic (standard) correlation
 
 %%% INPUT FILES AND OUTPUT FOLDER
 
 cfg.experiment_ID = '2093_NC_170406';
-cfg.sbxfiles{1}='C:\Users\skOpti_6\Documents\MATLAB\klab_Suite2P\TESTDATA\2093_NC_170406_000_007.sbx';
-cfg.sbxfiles{2}='C:\Users\skOpti_6\Documents\MATLAB\klab_Suite2P\TESTDATA\2093_NC_170406_000_010.sbx';
+cfg.sbxfiles{1}='Z:\RawCaDataArchive\Kristin\2093_NC_170406\2093_NC_170406_000_007.sbx';
+cfg.sbxfiles{2}='Z:\RawCaDataArchive\Kristin\2093_NC_170406\2093_NC_170406_000_010.sbx';
+cfg.sbxfiles{3}='Z:\RawCaDataArchive\Kristin\2093_NC_170406\2093_NC_170406_000_014.sbx';
+cfg.sbxfiles{4}='Z:\RawCaDataArchive\Kristin\2093_NC_170406\2093_NC_170406_000_016.sbx';
 
 cfg.outpath = 'C:\Users\skOpti_6\Documents\MATLAB\klab_Suite2P\TESTDATA\output';
 

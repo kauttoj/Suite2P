@@ -77,12 +77,11 @@ if translate
 end
 
 % added 4/7/2016 by JK
-corr_mult_mask = ones(2*lCorr+1,2*lCorr+1,batchSize);
-if isfield(ops,'max_shift_limit') && ops.max_shift_limit<norm([lCorr,lCorr])
+corr_mult_mask = zeros(2*lCorr+1,2*lCorr+1,batchSize);
+if isfield(ops,'max_shift_limit') && ops.max_shift_limit<2*lCorr
     [rr,cc] = meshgrid(1:(2*lCorr+1));   
-    mask = double(sqrt((rr-lCorr-1).^2+(cc-lCorr-1).^2)<ops.max_shift_limit);
-    mask(mask==0)=nan;
-    corr_mult_mask = bsxfun(@times,corr_mult_mask,mask);
+    mask = double(sqrt((rr-lCorr-1).^2+(cc-lCorr-1).^2)>ops.max_shift_limit);
+    corr_mult_mask = bsxfun(@plus,corr_mult_mask,-mask);
 end
 if useGPU
     corr_mult_mask = gpuArray(corr_mult_mask);
@@ -113,15 +112,16 @@ for bi = 1:nBatches
     corrUps(yEmbedRef,xEmbedRef,:) = corrMap;
     corrUps = real(ifft2(corrUps));
     corrClip = corrUps(yCorrRef,xCorrRef,:);
-    
+        
     % added by Marius 20.07.2016, smooth the correlation maps
     corrClipSmooth = my_conv2(corrClip, 1, [1 2]);
     
-    % added 4/7/2016 by JK
-    corrClipSmooth = corrClipSmooth.*corr_mult_mask;
-    
+    % added 4/7/2016 by JK    
+    corrClipSmooth = corrClipSmooth + corr_mult_mask;
+    corrClip = corrClip + corr_mult_mask;
+        
     % find peak
-    [dmax, iy] = max(corrClipSmooth, [], 1,'omitnan');
+    [dmax, iy] = max(corrClipSmooth, [], 1);
     iy = gather_try(iy);
     dmax = gather_try(dmax);
     [dmax, ix] = max(dmax, [], 2);

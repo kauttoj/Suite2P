@@ -75,6 +75,18 @@ if ops.kriging
     Kmat = Kg/Kx;
 end
 
+% added 4/7/2016 by JK
+corr_mult_mask = zeros(size(refImg,1),size(refImg,2),batchSize);
+if isfield(ops,'max_shift_limit') && ops.max_shift_limit<max(size(refImg))
+    CENTER = [floor(ly/2)+1,floor(lx/2)+1];
+    [rr,cc] = meshgrid(1:size(refImg,1),1:size(refImg,2));   
+    mask = double(sqrt((rr-CENTER(1)).^2+(cc-CENTER(2)).^2)>ops.max_shift_limit)';
+    corr_mult_mask = bsxfun(@plus,corr_mult_mask,-mask);
+end
+if useGPU
+    corr_mult_mask = gpuArray(corr_mult_mask);
+end
+
 % loop over batches
 dv = zeros(nFrames, 2);
 corr = zeros(nFrames, 1);
@@ -82,6 +94,10 @@ corr = zeros(nFrames, 1);
 nBatches = ceil(nFrames/batchSize);
 for bi = 1:nBatches
     fi = ((bi - 1)*batchSize + 1):min(bi*batchSize, nFrames);
+    
+    if bi == nBatches
+        corr_mult_mask = corr_mult_mask(:,:,1:numel(fi));
+    end
     
     if useGPU
         batchData = gpuArray(single(data(:,:,fi)));
@@ -101,7 +117,7 @@ for bi = 1:nBatches
     % compute correlation matrix
     corrClip = real(ifft2(corrMap));
     corrClip = fftshift(fftshift(corrClip, 1), 2);
-    corrClipSmooth = corrClip;
+    corrClipSmooth = corrClip + corr_mult_mask;
     
     %% subpixel registration
     if subpixel > 1

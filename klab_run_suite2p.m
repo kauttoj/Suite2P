@@ -88,12 +88,13 @@ if exist(cfg.CONFIGFILE,'file')
     old_cfg = load([cfg.outpath,filesep,cfg.experiment_ID,'_suite2p_CONFIGFILE.mat']);
     
     try 
+        assert(length(old_cfg.cfg.sbxfiles)<=length(cfg.sbxfiles));
         for i=1:length(old_cfg.cfg.sbxfiles)
             if ~strcmp(old_cfg.cfg.sbxfiles{i},cfg.sbxfiles{i})
                assert(0);
             end
         end
-        for i=1:length(old_cfg.cfg.sbxfiles)
+        for i=1:length(cfg.sbxfiles)
             if ~exist(old_cfg.cfg.fileinfo{i}.folders{1},'dir')
                 assert(0);
             end

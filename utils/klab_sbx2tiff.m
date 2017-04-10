@@ -34,7 +34,7 @@ expts_all = cell(1,length(cfg.sbxfiles));
 expred_all = cell(1,length(cfg.sbxfiles));
 fileinfo = cell(1,length(cfg.sbxfiles));
 
-for ii = INDICES
+parfor ii = INDICES
     % make sure we are in data folder (required by sbx)
     filename = infiles{ii};
     
