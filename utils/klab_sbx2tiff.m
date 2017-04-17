@@ -34,7 +34,7 @@ expts_all = cell(1,length(cfg.sbxfiles));
 expred_all = cell(1,length(cfg.sbxfiles));
 fileinfo = cell(1,length(cfg.sbxfiles));
 
-parfor ii = INDICES
+for ii = INDICES
     % make sure we are in data folder (required by sbx)
     filename = infiles{ii};
     
@@ -54,9 +54,11 @@ parfor ii = INDICES
     
     rem = mod(size(data,4),cfg.planes);
     if rem>0
-        data(:,:,:,size(data,4)+1-rem)=[];
+        data(:,:,:,(end-rem+1):end)=[];
         warning('Frame count is not multiply of planes, dropping last %i frames!',rem);
     end
+    
+    assert(mod(size(data,4),cfg.planes)==0); % now the framecount must match!
     
     if nnz(cfg.grating_size)>0
         fprintf('Interpolating interleaved gratings with %i (left) and %i (right)...',cfg.grating_size(1),cfg.grating_size(2));
