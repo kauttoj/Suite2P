@@ -47,6 +47,10 @@ if ~isfield(cfg,'tempfile_folder') || ( isfield(cfg,'tempfile_folder') && isempt
     cfg.tempfile_folder = [cfg.tempdata_folder,filesep];
 end
 
+if ~isfield(cfg,'write_red_bin')
+   cfg.write_red_bin = 0;
+end 
+
 cfg.mouse_name = cfg.experiment_ID; % subfolder, level1
 cfg.date = 'suite2p'; % subfolder, level 2
 cfg.processing_stage = 0;
@@ -224,6 +228,7 @@ if isfield(db0,'expred') && ~isempty(db0(1).expred)
     fprintf('\n-------- adding red channel (%s) ----------\n\n',char(datetime('now')));
     
     ops0.nchannels_red = db0(1).nchannels_red;
+    ops0.write_red_bin = cfg.write_red_bin;
             
     if cfg.use_cluster_computing
         

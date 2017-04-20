@@ -49,21 +49,16 @@ for ii = INDICES
     fname = [filename,'_raw'];
     
     info = [];
-    [data,info,orig_FOV] = readsbx(filename,cfg.image_FOV);
+    data = [];
+    [data,info,orig_FOV] = readsbx(filename,cfg.image_FOV,cfg.planes);
     fprintf(' done\n');
-    
-    rem = mod(size(data,4),cfg.planes);
-    if rem>0
-        data(:,:,:,(end-rem+1):end)=[];
-        warning('Frame count is not multiply of planes, dropping last %i frames!',rem);
-    end
-    
+       
     assert(mod(size(data,4),cfg.planes)==0); % now the framecount must match!
     
     if nnz(cfg.grating_size)>0
         fprintf('Interpolating interleaved gratings with %i (left) and %i (right)...',cfg.grating_size(1),cfg.grating_size(2));
         tic
-        data = round(do_grating_interpolation(data,cfg.grating_size,mod(cfg.image_FOV(3),2)));
+        data = do_grating_interpolation(data,cfg.grating_size,mod(cfg.image_FOV(3),2));
         fprintf(' done (%is)\n',round(toc));
     end
     
@@ -84,19 +79,7 @@ for ii = INDICES
     end
     
     info.channels = size(data,1);
-    info.framerate = (sbxinfo.resfreq/sbxinfo.config.lines*(2-sbxinfo.scanmode));
-    
-    % test if the last GREEN frame contains good data, if not, drop it
-    last = squeeze(data(1,:,:,end));
-    last = last(:);
-    if var(double(last))<1e-5 || nnz(isnan(last))>0
-        data(:,:,:,end)=[];
-        rem = mod(size(data,4),cfg.planes);
-        if rem>0
-            data(:,:,:,size(data,4)+1-rem)=[];
-            warning('Frame count is not multiply of planes, dropping last %i frames!',rem);
-        end
-    end
+    info.framerate = (sbxinfo.resfreq/sbxinfo.config.lines*(2-sbxinfo.scanmode));    
     
     bad = data>floor(intmax('uint16')*0.99);
     if nnz(bad)>0
@@ -216,7 +199,7 @@ TiffWriter(uint16(data),fname,16);
 
 end
 
-function [data,info,orig_FOV] = readsbx(filename,FOV)
+function [data,info,orig_FOV] = readsbx(filename,FOV,planes)
 
 % get info
 clearvars -global
@@ -233,11 +216,16 @@ if size(img,2)>sy || size(img,3)>sx
     fprintf(' original FOV [y,x]=[%i,%i] cropped to [%i,%i] ',size(img,2),size(img,3),sy,sx);
 end
 
-for i=0:(info.max_idx-1)
+rem = mod(info.max_idx,planes);
+if rem>0
+    warning('\nfile %s: Frame count is not multiply of planes, dropping last %i frames!',filename,rem);
+end
+
+for i=0:(info.max_idx-1-rem)
     a = sbxread(filename,i,1);
     %a = sbxread(filename,0,i);
     if i==0
-        data = zeros(size(a,1),sy,sx,info.max_idx,'uint16');
+        data = zeros(size(a,1),sy,sx,info.max_idx-rem,'uint16');
         orig_FOV = [size(a,2),size(a,3)];
     end
     data(:,:,:,i+1) = a(:,FOV(3):FOV(4),FOV(1):FOV(2));
@@ -263,8 +251,6 @@ cols_right = (sz(3)-extend(2)+1):sz(3);
 
 N_bad_left = length(bad_left);
 N_bad_right = length(bad_right);
-
-data = single(data);
 
 for i = 1:size(data,4)
     frame = (data(:,:,:,i));
