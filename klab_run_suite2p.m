@@ -232,7 +232,7 @@ if isfield(db0,'expred') && ~isempty(db0(1).expred)
             
     if cfg.use_cluster_computing
         
-        DetectRedCells_cluster(db(1),ops0); % fills dat.cl.redcell and dat.cl.notred
+        DetectRedCells_cluster(db(1),ops0,cfg); % fills dat.cl.redcell and dat.cl.notred
         
     else        
                       
