@@ -253,9 +253,14 @@ catch err
     warning('Failed to create diagnostic figures!, reason: %s',err.message);
 end
 
-
 if exist(ops0.temp_tiff,'file')
     delete(ops0.temp_tiff);
+end
+
+output_tiff_folder = [];
+if cfg.write_aligned_tiffs
+    output_tiff_folder = [ops0.ResultsSavePath,filesep,'aligned_tiffs'];
+    mkdir(output_tiff_folder);
 end
 
 root = [ops0.ResultsSavePath,filesep,db(1).mouse_name,filesep,db(1).date];
@@ -269,10 +274,25 @@ for i=1:length(d)
     dd = dir(outpath);
     for j=1:length(dd) 
         if ~(strcmp(dd(j).name,'.') || strcmp(dd(j).name,'..'))
-            movefile([outpath,filesep,dd(j).name],ops0.ResultsSavePath);
+            if dd(j).isdir && ~isempty(output_tiff_folder)    
+                try
+                    movefile([outpath,filesep,dd(j).name,filesep,'*'],output_tiff_folder);
+                    pause(7); % seems that movefile does not wait process to finish in linux
+                    rmdir([outpath,filesep,dd(j).name]);
+                catch err
+                    warning('\nFailed to move aligned tiffs into output folder!: %s\n',err.message);
+                end
+            else
+                movefile([outpath,filesep,dd(j).name],ops0.ResultsSavePath);
+                pause(2);
+            end
         end
     end
-    rmdir(outpath);
+    try
+        rmdir(outpath);
+    catch err
+        warning('\nFailed to remove temp output folder!: %s\n',err.message);
+    end
 end
 
 if cfg.delete_raw_tiffs==1    
@@ -292,8 +312,8 @@ if cfg.delete_raw_tiffs==1
             end
             try
                 rmdir(cfg.fileinfo{i}.folders{j});
-            catch
-                
+            catch err
+                warning('\nFailed to remove raw tiff folder!: %s\n',err.message);
             end
         end
     end    
@@ -303,7 +323,7 @@ if cfg.delete_raw_tiffs==1
         rmdir([cfg.tempdata_folder,filesep,cfg.mouse_name]);
         rmdir([cfg.tempdata_folder]);
     catch err
-        warning('Failed to clean folders: %s',err.message);
+        warning('\nFailed to clean folders: %s\n',err.message);
     end
 end
 
