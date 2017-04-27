@@ -9,26 +9,37 @@ H2              = zeros(h.dat.cl.Ly, h.dat.cl.Lx);
 [iclust1, iclust2, V1, V2] = ...
     getviclust(h.dat.stat, h.dat.cl.Ly,  h.dat.cl.Lx, h.dat.cl.vmap, h.dat.F.ichosen);
 
-iselect     = iclust1==h.dat.F.ichosen;
-Sat1(iselect)= 0;
+iselect1     = iclust1==h.dat.F.ichosen;
+Sat1(iselect1)= 0;
 
-iselect     = iclust2==h.dat.F.ichosen;
-Sat2(iselect)= 0;
+iselect2     = iclust2==h.dat.F.ichosen;
+Sat2(iselect2)= 0;
 
 H1(iclust1>0)   = h.dat.cl.rands(iclust1(iclust1>0));
 H2(iclust2>0)   = h.dat.cl.rands(iclust2(iclust2>0));
 
 I = hsv2rgb(cat(3, H1, Sat1, V1));
 I = min(I, 1);
+if h.add_segment_halo
+    I = add_cell_halo(I,iselect1);
+end
 axes(h.axes2); imagesc(I);
 xlim([h.dat.xlim]); ylim([h.dat.ylim]);
 axis off
 
 I = hsv2rgb(cat(3, H2, Sat2, V2));
 I = min(I, 1);
+if h.add_segment_halo
+    I = add_cell_halo(I,iselect2);
+end
 axes(h.axes3); imagesc(I);
 xlim([h.dat.xlim]); ylim([h.dat.ylim]);
 axis off
+
+if h.is_ROI_making_mode>1
+   r = h.custom_ROI.Radius;
+   h.custom_ROI.plothandle = rectangle('Position',[h.custom_ROI.Center-[r,r/ratio],2*r,2*r/ratio],'Curvature',[1,1],'EdgeColor','g','LineWidth',3);
+end
 
 end
 

@@ -25,21 +25,31 @@ function new_main_OpeningFcn(hObject, eventdata, h, varargin)
 % This function has no output args, see OutputFcn.
 % varargin   command line arguments to new_main (see VARARGIN)
 
-fprintf('\n\n ---- GUI version 2/14/2017 (klab mod)----\n\n');
+%% TOGGLE TO FREEZE CLASSIFIER
+FREEZE_CLASSIFIER = 1;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+fprintf('\n\n ---- GUI version 4/26/2017 (klab mod)----\n\n');
 
 axes(h.axes2);
 set(gca, 'xtick', [], 'ytick', [])
-set(gca, 'xcolor', 'w', 'ycolor', 'w')
+set(gca, 'xcolor', 'k', 'ycolor', 'k')
 axes(h.axes3);
 set(gca, 'xtick', [], 'ytick', [])
-set(gca, 'xcolor', 'w', 'ycolor', 'w')
+set(gca, 'xcolor', 'k', 'ycolor', 'k')
 axes(h.axes4);
 set(gca, 'xtick', [], 'ytick', [])
-set(gca, 'xcolor', 'w', 'ycolor', 'w')
+set(gca, 'xcolor', 'k', 'ycolor', 'k')
+
+zoom_handle = zoom();
+h.zoom_handle = zoom_handle;
 
 h.output = hObject;
+h.FREEZE_CLASSIFIER = FREEZE_CLASSIFIER;
 
 h.show_dff = 0;
+h.is_ROI_making_mode = 0;
+h.add_segment_halo = 0;
 
 guidata(hObject, h);
 
@@ -53,7 +63,6 @@ function varargout = new_main_OutputFcn(hObject, eventdata, h)
 varargout{1} = h.output;
 
 function pushbutton87_KeyPressFcn(hObject, eventdata, h)
-
 
 % main LOAD call
 function pushbutton17_Callback(hObject, eventdata, h)
@@ -177,7 +186,7 @@ if flag
     end
     
     % activate all pushbuttons
-    pb = [84 93 101 86 87 89 90 92 103 98 95 96 102 99 100 1 2 104];
+    pb = [84 93 101 86 87 89 90 92 103 98 95 96 102 99 100 1 2 104 113 114 115];
     for j = 1:numel(pb)
         set(eval(sprintf('h.pushbutton%d', pb(j))),'Enable','on')
     end
@@ -241,6 +250,15 @@ if flag
     redraw_fluorescence(h);
     redraw_figure(h);
     
+    hManager = uigetmodemanager(h.figure1);
+    try
+        set(hManager.WindowListenerHandles, 'Enable', 'off');  % HG1
+    catch
+        [hManager.WindowListenerHandles.Enabled] = deal(false);  % HG2
+    end
+%     set(h.figure1,'WindowButtonDownFcn', @(x,y) myCallbackFcn(x,y,h));
+%     set(h.figure1,'KeyPressFcn',@(x,y) myCallbackFcn(x,y,h));
+    
     guidata(hObject,h)
     
     refresh_stats(h,1);
@@ -275,7 +293,7 @@ guidata(hObject,h);
 
 function pushbutton84_Callback(hObject, eventdata, h)
 % save proc file and rules file
-DATALIMIT = 10000000;
+DATALIMIT = 200000;
 
 h.dat.F.trace = [];
 dat = h.dat;
@@ -310,13 +328,23 @@ statLabels  = h.statLabels;
 prior       = h.prior;
 st          = cat(1, h.st, h.st0);
 refresh_stats(h,2);
-try
-    fprintf('\nUpdating classifier (total %i samples) file %s ...',size(st,1),h.dat.cl.fpath);    
-    save(h.dat.cl.fpath, 'st', 'statLabels', 'prior')
-    fprintf(' done\n');     
-catch err
-    warning('\nFailed to write classifier file %s: %s',h.dat.cl.fpath,err.message);
+
+if h.FREEZE_CLASSIFIER==0
+    
+    try
+        fprintf('\nUpdating classifier (total %i samples) file %s ...',size(st,1),h.dat.cl.fpath);
+        save(h.dat.cl.fpath, 'st', 'statLabels', 'prior')
+        fprintf(' done\n');
+    catch err
+        warning('\nFailed to write classifier file %s: %s',h.dat.cl.fpath,err.message);
+    end
+    
+else
+    
+    fprintf('\n NOTE: Classifier updating is turned off (flag FREEZE_CLASSIFIER==1)\n\n')
+    
 end
+
 refresh_stats(h,1);
 
 
@@ -404,11 +432,7 @@ h.quadvalue(iy, ix) = 1;
 
 guidata(hObject,h);
 
-if h.dat.map==1
-    redraw_figure(h);
-else
-    redraw_meanimg(h);
-end
+refresh_figure(h);
 
 function figure1_WindowKeyPressFcn(hObject, eventdata, h)
 switch eventdata.Key
@@ -455,7 +479,43 @@ z = round(eventdata.Source.CurrentAxes.CurrentPoint(1,:));
 x = round(z(1));
 y  = round(z(2));
 
-if x>=1 && y>=1 && x<=h.dat.cl.Lx && y<=h.dat.cl.Ly && h.dat.res.iclust(y,x)>0
+if x>=1 && y>=1 && x<=h.dat.cl.Lx && y<=h.dat.cl.Ly 
+    
+    if h.is_ROI_making_mode>0        
+        ratio = h.dat.cl.Lx/h.dat.cl.Ly;
+        if h.is_ROI_making_mode==1 || ...
+                ( h.is_ROI_making_mode>1 && norm(h.custom_ROI.Center-[x,y])>h.custom_ROI.Radius )
+            h.custom_ROI.Center = [x,y];
+            h.custom_ROI.Radius = 10;%h.circleRadius;            
+            r = h.custom_ROI.Radius;
+            try
+                delete(h.custom_ROI.plothandle);
+            catch
+                
+            end                
+            h.custom_ROI.plothandle = rectangle('Position',[h.custom_ROI.Center-[r,r/ratio],2*r,2*r/ratio],'Curvature',[1,1],'EdgeColor','g','LineWidth',3);
+            h.is_ROI_making_mode = 2;
+        else
+            r = h.custom_ROI.Radius;   
+            try
+                delete(h.custom_ROI.plothandle);
+            catch
+                
+            end            
+            h.custom_ROI.plothandle = rectangle('Position',[h.custom_ROI.Center-[r,r/ratio],2*r,2*r/ratio],'Curvature',[1,1],'EdgeColor','r','LineWidth',4);            
+            h = getROISignal(h);
+            h.is_ROI_making_mode = 3;
+            redraw_fluorescence(h);
+            refresh_figure(h);
+        end
+        guidata(hObject,h);
+        return;
+    end
+    
+    if ~(h.dat.res.iclust(y,x)>0)
+        return;
+    end        
+    
     h.dat.F.ichosen = h.dat.res.iclust(y, x);
     ichosen = h.dat.F.ichosen;
     
@@ -497,7 +557,13 @@ if x>=1 && y>=1 && x<=h.dat.cl.Lx && y<=h.dat.cl.Ly && h.dat.res.iclust(y,x)>0
 %     h.dat.img2.Sat     = Sat;
 %     h = buildLambdaValue(h);
     
-    redraw_figure(h);
+    if h.add_segment_halo==0
+        h.dat.map = 1;
+        set_Bcolor(h);
+    end
+
+    refresh_figure(h);        
+    
     guidata(hObject,h);
        
     str = [];
@@ -510,8 +576,10 @@ if x>=1 && y>=1 && x<=h.dat.cl.Lx && y<=h.dat.cl.Ly && h.dat.res.iclust(y,x)>0
        end
     end
     str = cat(2, str, sprintf('Cell ID = %i (%i)',ichosen,sum([h.dat.stat(1:ichosen).iscell])));
+    str = cat(2, str, sprintf('\n(x,y)=(%i,%i)',h.dat.stat(ichosen).med(2),h.dat.stat(ichosen).med(1)));
     
-   set(h.text54,'String', str);
+    set(h.text54,'String', str);
+    
 end
 
 function pushbutton86_Callback(hObject, eventdata, h)
@@ -528,9 +596,12 @@ else
 end
 guidata(hObject,h);
 
-
 function set_Bcolor(h, ih)
 pb = [87 103 89 90 92];
+
+if nargin==1
+    ih = h.dat.map;
+end
  
 for j = 1:length(pb)
     if j==ih
@@ -783,6 +854,7 @@ function pushbutton108_Callback(hObject, eventdata, handles)
 handles.show_dff = 1-(handles.show_dff==1);
 guidata(hObject,handles);
 redraw_fluorescence(handles);
+refresh_figure(handles);
 
 function pushbutton106_Callback(hObject, eventdata, handles)
 msg{1} = ['This applies only if you select "ROIs" under "background".'];
@@ -856,8 +928,6 @@ end
 set(handles.datastatsID,'String',thestr);
 drawnow();
 
-
-
 function edit51_Callback(hObject, eventdata, h)
 % hObject    handle to edit51 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -885,3 +955,164 @@ function edit51_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+% --- Executes on button press in pushbutton112.
+function pushbutton112_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton112 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+handles.show_dff = -1;
+guidata(hObject,handles);
+redraw_fluorescence(handles);
+refresh_figure(handles);
+
+% --- Executes on button press in pushbutton113.
+function pushbutton113_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton113 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+if strcmp(handles.zoom_handle.Enable,'on')
+    handles.zoom_handle.Enable='off';
+    set(handles.(sprintf('pushbutton%d', 113)), 'BackgroundColor',0.94*[1 1 1]);    
+else
+    handles.zoom_handle.Enable='on';
+    set(handles.(sprintf('pushbutton%d', 113)), 'BackgroundColor',[1 0 0]);    
+end       
+guidata(hObject,handles);
+
+
+% --- Executes on button press in pushbutton114.
+function pushbutton114_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton114 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+% hObject    handle to pushbutton114 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+if ~isfield(handles,'is_ROI_making_mode')
+    handles.is_ROI_making_mode = 0;
+end
+
+if strcmp(handles.zoom_handle.Enable,'on')
+    handles.zoom_handle.Enable='off';
+    set(handles.(sprintf('pushbutton%d', 114)), 'BackgroundColor',0.94*[1 1 1]);        
+end
+
+if handles.is_ROI_making_mode
+    handles.is_ROI_making_mode = 0;
+    set(handles.(sprintf('pushbutton%d', 114)), 'BackgroundColor',0.94*[1 1 1]);    
+    try
+       delete(handles.custom_ROI.plothandle);
+    catch
+        
+    end
+else
+    handles.is_ROI_making_mode = 1;
+    set(handles.(sprintf('pushbutton%d', 114)), 'BackgroundColor',[1 0 0]);    
+end       
+
+guidata(hObject, handles);
+
+% --- If Enable == 'on', executes on mouse press in 5 pixel border.
+% --- Otherwise, executes on mouse press in 5 pixel border or over pushbutton114.
+function pushbutton114_ButtonDownFcn(hObject, eventdata, handles)
+
+
+
+
+% --- Executes on scroll wheel click while the figure is in focus.
+function figure1_WindowScrollWheelFcn(hObject, eventdata, handles)
+% hObject    handle to figure1 (see GCBO)
+% eventdata  structure with the following fields (see FIGURE)
+%	VerticalScrollCount: signed integer indicating direction and number of clicks
+%	VerticalScrollAmount: number of lines scrolled for each click
+% handles    structure with handles and user data (see GUIDATA)
+if handles.is_ROI_making_mode==2
+    ratio = handles.dat.cl.Lx/handles.dat.cl.Ly;
+    handles.custom_ROI.Radius = max(3,min(35,handles.custom_ROI.Radius - (eventdata.VerticalScrollAmount*eventdata.VerticalScrollCount/3)));
+    r = handles.custom_ROI.Radius;
+    try
+       delete(handles.custom_ROI.plothandle);
+    catch
+        
+    end    
+    handles.custom_ROI.plothandle = rectangle('Position',[handles.custom_ROI.Center-[r,r/ratio],2*r,2*r/ratio],'Curvature',[1,1],'EdgeColor','g','LineWidth',3);   
+    guidata(hObject, handles);
+end
+
+guidata(hObject, handles);
+
+
+function h = getROISignal(h)
+
+path = fileparts(h.dat.filename);
+[~,file] = fileparts(h.dat.ops.RegFile);
+
+if any(h.dat.map-[3,4]==0)
+    
+    file = [path,filesep,file,'_RED.bin'];
+    if ~exist(file,'file')
+        error('Registered RED binary nor found! Requesting file:\n  %s\n',file);
+    end    
+    isred = 1;
+    
+else
+    
+    file = [path,filesep,file,'.bin'];
+    if ~exist(file,'file')
+        error('Registered GREEN binary nor found! Requesting file:\n  %s\n',file);
+    end
+    isred = 0;
+        
+end
+
+TEMP_ops = h.dat.ops;
+
+TEMP_ops.RegFile = file;
+
+a = -h.custom_ROI.Radius:h.custom_ROI.Radius;
+[x,y] = meshgrid(h.custom_ROI.Center(1) + a,h.custom_ROI.Center(2) + a);
+
+good = find(not(sqrt( (x-h.custom_ROI.Center(1)).^2 + (y-h.custom_ROI.Center(2)).^2 ) >  h.custom_ROI.Radius));
+
+coord = [x(good),y(good)];
+
+coord(:,1) = coord(:,1) + TEMP_ops.xrange(1);
+coord(:,2) = coord(:,2) + TEMP_ops.yrange(1);
+coord = coord - 1;
+
+fprintf('\nExtracting mean signal of the selected ROI (this can take several minutes)...\n\n');
+
+refresh_stats(h,2);
+h.custom_ROI.sig = readBin(TEMP_ops,0,'all',h.dat.ops.iplane,isred,coord);
+
+h.custom_ROI.sig_isred = isred;
+
+h.custom_ROI.sig_sourcefile = h.dat.ops.RegFile;
+refresh_stats(h,1);
+
+
+% --- Executes on button press in pushbutton115.
+function pushbutton115_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton115 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+if handles.add_segment_halo
+    handles.add_segment_halo = 0;
+    set(handles.(sprintf('pushbutton%d', 115)), 'BackgroundColor',0.94*[1 1 1]);    
+else
+    handles.add_segment_halo = 1;
+    set(handles.(sprintf('pushbutton%d', 115)), 'BackgroundColor',[1 0 0]);    
+end      
+refresh_figure(handles);
+guidata(hObject,handles);
+
+function refresh_figure(handles)
+
+if handles.dat.map==1
+    redraw_figure(handles);
+else
+    redraw_meanimg(handles);
+end
+refresh;
+

@@ -23,52 +23,57 @@ else
 %     warning('no specified classifier database, reverting  to last used');
 end
 h.is_shared_classifier = 0;
-if (flag==0)
+if (flag==0)    
     try
         run([rootS2p_PATH,filesep,'SHARED_CLASSIFIER_PATHS.m']);
-        if exist('CLASSIFIER_DATAFILE','var')
-            
-            isok = zeros(1,length(CLASSIFIER_DATAFILE));
-            for i=1:length(CLASSIFIER_DATAFILE)
-                if exist(CLASSIFIER_DATAFILE(i).file,'file')
-                    isok(i)=1;
-                end
-            end
-            fprintf('... found %i shared classification files:\n',sum(isok));
-            if sum(isok)==0
-                assert(0);
-            end            
-            sel=[];k=0;
-            for i=1:length(CLASSIFIER_DATAFILE)
-                if isok(i)
-                    k=k+1;
-                    fprintf('..... %i: %s\n',k,CLASSIFIER_DATAFILE(i).file);
-                    if isempty(sel) && h.dat.ops.nplanes==CLASSIFIER_DATAFILE(i).planes
-                        sel = [k,i];
-                    end
-                end
-            end
-            if ~isempty(sel)                
-                def_file = CLASSIFIER_DATAFILE(sel(2)).file;
-                h.dat.cl.fpath  = def_file;
-                hload = load(h.dat.cl.fpath);
-                if ~isfield(hload, 'st') || ~isfield(hload, 'statLabels') || ~isfield(hload, 'prior')
-                    error('Classifier file %s is corrupt, should contain fields st, prior and statLabels!!', def_file);
-                end
-                fprintf('... classifier %i with %i planes is loaded (total %i samples)\n',sel(1),CLASSIFIER_DATAFILE(sel(2)).planes,size(hload.st,1));
-                h.st        = hload.st;
-                h.prior     = hload.prior;
-                h.statLabels = hload.statLabels;
-                h.is_shared_classifier = 1;
-            else
-                fprintf('... none of the classifiers is suitable (plane number mismatch)!\n');
-                assert(0);
+        
+        CLASSIFIER_DATAFILE(1).file;
+        assert(h.FREEZE_CLASSIFIER==0);
+        
+        isok = zeros(1,length(CLASSIFIER_DATAFILE));
+        for i=1:length(CLASSIFIER_DATAFILE)
+            if exist(CLASSIFIER_DATAFILE(i).file,'file')
+                isok(i)=1;
             end
         end
+        fprintf('... found %i shared classification files:\n',sum(isok));
+        if sum(isok)==0
+            assert(0);
+        end
+        sel=[];k=0;
+        for i=1:length(CLASSIFIER_DATAFILE)
+            if isok(i)
+                k=k+1;
+                fprintf('..... %i: %s\n',k,CLASSIFIER_DATAFILE(i).file);
+                if isempty(sel) && h.dat.ops.nplanes==CLASSIFIER_DATAFILE(i).planes
+                    sel = [k,i];
+                end
+            end
+        end
+        if ~isempty(sel)
+            def_file = CLASSIFIER_DATAFILE(sel(2)).file;
+            h.dat.cl.fpath  = def_file;
+            hload = load(h.dat.cl.fpath);
+            if ~isfield(hload, 'st') || ~isfield(hload, 'statLabels') || ~isfield(hload, 'prior')
+                error('Classifier file %s is corrupt, should contain fields st, prior and statLabels!!', def_file);
+            end
+            fprintf('... classifier %i with %i planes is loaded (total %i samples)\n',sel(1),CLASSIFIER_DATAFILE(sel(2)).planes,size(hload.st,1));
+            h.st        = hload.st;
+            h.prior     = hload.prior;
+            h.statLabels = hload.statLabels;
+            h.is_shared_classifier = 1;
+        else
+            fprintf('... none of the classifiers is suitable (plane number mismatch)!\n');
+            assert(0);
+        end
         
-    catch
+    catch err
         
-        warning(' No shared path classifier found, trying to open a local classifier!')
+        if ~h.FREEZE_CLASSIFIER
+            warning(' No shared path classifier found, trying to open a local classifier!')
+        else
+            fprintf(' Searching for a local classifier...\n');
+        end
         
         fs = dir(fullfile(rootS2p, '*.mat'));
         if isempty(fs)
