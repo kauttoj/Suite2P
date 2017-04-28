@@ -5,6 +5,7 @@ axes(h.axes4)
 cla(h.axes4,'reset');
 
 blue = [0,0.4470,0.7410];
+green = [0,200,50]/255;
 red = [0.8500,0.3250,0.0980];
 
 ichosen = h.dat.F.ichosen;
@@ -26,10 +27,10 @@ DS = 0*F_dff;
 if h.is_ROI_making_mode==3
     
     if h.custom_ROI.sig_isred
-        plot(h.custom_ROI.sig,'color','r','linewidth',2);
+        plot(h.custom_ROI.sig,'color',red,'linewidth',2);
         legend('RED channel signal');
     else
-        plot(h.custom_ROI.sig,'color','g','linewidth',2);
+        plot(h.custom_ROI.sig,'color',green,'linewidth',2);
         legend('GREEN channel signal');
     end
     
@@ -65,6 +66,10 @@ else
         
         x = 1:length(F_dff_spikes);
         
+        if strcmp(h.zoom_handle.Enable,'off')        
+           F_dff = my_conv_local(medfilt1(double(F_dff), 3), 3);
+        end
+            
         [AX,H1,H2] = plotyy(x,F_dff_spikes,x,F_dff);
         
         ylabel(AX(1),'Spike amplitude','Fontsize',12);
@@ -81,11 +86,16 @@ else
         set(AX(1),'Ylim',ylim_left);
         set(AX(2),'Ylim',ylim_right);
         
+        %% CANNOT CHANGE Y-AXES AS UISTACK WILL DISTURB UI EVENTS
         %uistack(AX(2),'bottom')
         %set(AX(1), 'Color', 'none');
         %set(AX(2), 'Color', 'w');                
         
     else
+        
+        if strcmp(h.zoom_handle.Enable,'off')        
+           F = my_conv_local(medfilt1(double(F), 3), 3);
+        end
         
         plot(F,'color',blue);
         
@@ -93,8 +103,10 @@ else
         hold on
         
         if isfield(h.dat, 'FcellNeu')
+            if strcmp(h.zoom_handle.Enable,'off')      
+                Fneu = my_conv_local(medfilt1(double(Fneu), 3), 3);
+            end
             plot(Fneu);
-            %plot(my_conv_local(medfilt1(double(Fneu), 3), 3))
         end
         ylabel('Raw signal','Fontsize',12);
         

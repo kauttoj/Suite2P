@@ -616,7 +616,7 @@ end
 function set_maskCcolor(h, ih)
 pb = [98 95 96 102 99 100 104]; 
  
-set_Bcolor(h, 1)
+%set_Bcolor(h, 1)
 
 for j = 1:length(pb)
     if j==ih
@@ -633,7 +633,7 @@ function pushbutton102_Callback(hObject, eventdata, h)
 hval = [h.dat.stat.mimgProjAbs];
 h.dat.cl.rands   = .1 + .8 * min(1, hval/mean(hval));
 h.dat.cl.rands_orig = h.dat.cl.rands;
-redraw_figure(h);
+refresh_figure(h);
 set_maskCcolor(h, 4);
 guidata(hObject,h);
 
@@ -647,14 +647,14 @@ function pushbutton96_Callback(hObject, eventdata, h)
 hval = [h.dat.stat.skew];
 h.dat.cl.rands   = .1 + .8 * min(1, hval/mean(hval));
 h.dat.cl.rands_orig = h.dat.cl.rands;
-redraw_figure(h);
+refresh_figure(h);
 set_maskCcolor(h, 3);
 guidata(hObject,h);
 
 function pushbutton95_Callback(hObject, eventdata, h)
 h.dat.cl.rands   = .1 + .8 * [h.dat.stat.cellProb];
 h.dat.cl.rands_orig = h.dat.cl.rands;
-redraw_figure(h);
+refresh_figure(h);
 set_maskCcolor(h, 2);
 guidata(hObject,h);
 
@@ -662,7 +662,7 @@ function pushbutton98_Callback(hObject, eventdata, h)
 h.dat.cl.rands   = .1 + .8 * rand(1, h.dat.ops.Nk);
 h.dat.cl.rands(logical([h.dat.stat.redcell])) = 0;
 h.dat.cl.rands_orig = h.dat.cl.rands;
-redraw_figure(h);
+refresh_figure(h);
 set_maskCcolor(h, 1);
 guidata(hObject,h);
 
@@ -670,7 +670,7 @@ function pushbutton99_Callback(hObject, eventdata, h)
 hval = max(0, [h.dat.stat.cmpct]-1);
 h.dat.cl.rands   = .1 + .8 * min(1, .5 * hval/mean(hval));
 h.dat.cl.rands_orig = h.dat.cl.rands;
-redraw_figure(h);
+refresh_figure(h);
 set_maskCcolor(h, 5);
 guidata(hObject,h);
 
@@ -678,7 +678,7 @@ function pushbutton100_Callback(hObject, eventdata, h)
 hval = [h.dat.stat.footprint];
 h.dat.cl.rands   = .1 + .8 * min(1, .5 * hval/mean(hval));
 h.dat.cl.rands_orig = h.dat.cl.rands;
-redraw_figure(h);
+refresh_figure(h);
 set_maskCcolor(h, 6);
 guidata(hObject,h);
 
@@ -978,8 +978,8 @@ else
     handles.zoom_handle.Enable='on';
     set(handles.(sprintf('pushbutton%d', 113)), 'BackgroundColor',[1 0 0]);    
 end       
+redraw_fluorescence(handles);
 guidata(hObject,handles);
-
 
 % --- Executes on button press in pushbutton114.
 function pushbutton114_Callback(hObject, eventdata, handles)
