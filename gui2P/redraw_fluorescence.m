@@ -20,7 +20,9 @@ for j = 1:numel(h.dat.Fcell)
     border(j+1) = length(F);
 end
 
-F_dff = F - h.dat.stat(ichosen).neuropilCoefficient*Fneu + mean(Fneu);
+F_dff = F - h.dat.stat(ichosen).neuropilCoefficient*Fneu + median(F);
+
+Fneu = Fneu*h.dat.stat(ichosen).neuropilCoefficient;
 
 DS = 0*F_dff;
 

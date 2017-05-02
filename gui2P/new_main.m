@@ -775,8 +775,9 @@ h.dat.cl.threshold = str2double(get(h.edit50,'String'));
 for j = 1:length(h.dat.stat)
     h.dat.stat(j).iscell = h.dat.stat(j).cellProb > h.dat.cl.threshold;
 end
+h.N_cells = sum([h.dat.stat.iscell]);
 redraw_figure(h);
-
+refresh_stats(h,1);
 guidata(hObject,h);
 
 
