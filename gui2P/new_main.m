@@ -575,8 +575,12 @@ if x>=1 && y>=1 && x<=h.dat.cl.Lx && y<=h.dat.cl.Ly
            str = cat(2, str, strnew);
        end
     end
-    str = cat(2, str, sprintf('Cell ID = %i (%i)',ichosen,sum([h.dat.stat(1:ichosen).iscell])));
-    str = cat(2, str, sprintf('\n(x,y)=(%i,%i)',h.dat.stat(ichosen).med(2),h.dat.stat(ichosen).med(1)));
+    if h.dat.stat(ichosen).iscell
+        str = cat(2, str, sprintf('Segment %i (cell ID %i)',ichosen,sum([h.dat.stat(1:ichosen).iscell])));
+    else
+        str = cat(2, str, sprintf('Segment %i',ichosen));
+    end
+    str = cat(2, str, sprintf('\n(x,y)=(%i,%i)',round(h.dat.stat(ichosen).med(2)),round(h.dat.stat(ichosen).med(1))));
     
     set(h.text54,'String', str);
     
