@@ -29,7 +29,7 @@ function new_main_OpeningFcn(hObject, eventdata, h, varargin)
 FREEZE_CLASSIFIER = 1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-fprintf('\n\n ---- GUI version 4/26/2017 (klab mod)----\n\n');
+fprintf('\n\n ---- GUI version 5/5/2017 (klab mod)----\n\n');
 
 axes(h.axes2);
 set(gca, 'xtick', [], 'ytick', [])
